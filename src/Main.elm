@@ -1,6 +1,7 @@
 module Main exposing (main)
 
-import Array exposing (Array)
+import Array
+import Board exposing (Board, minoCount)
 import Browser
 import Browser.Events exposing (onAnimationFrameDelta)
 import Canvas exposing (Point, Renderable, rect, shapes)
@@ -8,7 +9,18 @@ import Canvas.Settings exposing (fill)
 import Color exposing (Color)
 import Html exposing (Html, div)
 import Html.Attributes exposing (style)
-import Maybe exposing (withDefault)
+import Tetromino exposing (..)
+import Types exposing (GridPoint)
+
+
+type alias Model =
+    { count : Float
+    , board : Board
+    }
+
+
+type Msg
+    = Frame Float
 
 
 main : Program () Model Msg
@@ -23,38 +35,7 @@ main =
 
 init : () -> ( Model, Cmd Msg )
 init () =
-    let
-        minoArr =
-            Array.fromList minos
-
-        length =
-            Array.length minoArr
-
-        indexToMino i =
-            i
-                |> Basics.modBy length
-                |> (\idx -> Array.get idx minoArr)
-                |> withDefault Blank
-    in
-    ( { count = 0, board = Array.initialize (rows * cols) indexToMino }, Cmd.none )
-
-
-type alias Board =
-    Array Mino
-
-
-type alias Model =
-    { count : Float
-    , board : Board
-    }
-
-
-type Msg
-    = Frame Float
-
-
-type alias GridPoint =
-    ( Int, Int )
+    ( { count = 0, board = Board.initBoard boardDims }, Cmd.none )
 
 
 view : Model -> Html Msg
@@ -73,22 +54,21 @@ view model =
         ]
 
 
-clearScreen : Renderable
-clearScreen =
-    shapes [ fill Color.black ] [ rect ( 0, 0 ) boardWidth boardHeight ]
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case msg of
+        Frame _ ->
+            ( { model | count = model.count + 1 }, Cmd.none )
 
 
-boardDims : ( Int, Int )
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    onAnimationFrameDelta Frame
+
+
+boardDims : GridPoint
 boardDims =
     ( 20, 10 )
-
-
-rows =
-    Tuple.first boardDims
-
-
-cols =
-    Tuple.second boardDims
 
 
 boardPosition : Point
@@ -96,49 +76,19 @@ boardPosition =
     ( 0, 0 )
 
 
+minoSize : Float
 minoSize =
     25
 
 
-toArrIndex : GridPoint -> Int
-toArrIndex ( r, c ) =
-    r * cols + c
-
-
-fromArrIndex : Int -> GridPoint
-fromArrIndex i =
-    ( i // cols, Basics.modBy cols i )
-
-
-minoAt : Board -> GridPoint -> Mino
-minoAt arr pos =
-    Array.get (toArrIndex pos) arr |> withDefault Blank
-
-
 boardWidth : Float
 boardWidth =
-    boardDims |> Tuple.second |> (*) minoSize |> toFloat
+    boardDims |> Tuple.second |> toFloat |> (*) minoSize
 
 
 boardHeight : Float
 boardHeight =
-    boardDims |> Tuple.first |> (*) minoSize |> toFloat
-
-
-type Mino
-    = I
-    | J
-    | L
-    | T
-    | S
-    | Z
-    | O
-    | Blank
-
-
-minos : List Mino
-minos =
-    [ I, J, L, T, S, Z, O, Blank ]
+    boardDims |> Tuple.first |> toFloat |> (*) minoSize
 
 
 minoColor : Mino -> Color
@@ -184,6 +134,11 @@ minoPosition ( r, c ) =
     ( c |> toFloat |> (*) minoSize |> (+) offX, r |> toFloat |> (*) minoSize |> (+) offY |> flipY )
 
 
+clearScreen : Renderable
+clearScreen =
+    shapes [ fill Color.black ] [ rect ( 0, 0 ) boardWidth boardHeight ]
+
+
 renderMino : Mino -> GridPoint -> Renderable
 renderMino mino pos =
     shapes [ fill (minoColor mino) ] [ rect (minoPosition pos) minoSize minoSize ]
@@ -192,19 +147,10 @@ renderMino mino pos =
 renderBoard : Model -> List Renderable
 renderBoard { count, board } =
     let
+        size =
+            Board.minoCount board
+
         transformIdx i =
-            i |> (+) (round (count / 5)) |> Basics.modBy (rows * cols)
+            i |> (+) (round (count / 5)) |> Basics.modBy size
     in
-    Array.indexedMap (\i mino -> renderMino mino (i |> transformIdx |> fromArrIndex)) board |> Array.toList
-
-
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-    case msg of
-        Frame _ ->
-            ( { model | count = model.count + 1 }, Cmd.none )
-
-
-subscriptions : Model -> Sub Msg
-subscriptions _ =
-    onAnimationFrameDelta Frame
+    Array.indexedMap (\i mino -> renderMino mino (i |> transformIdx |> Board.fromArrIndex board)) board.arr |> Array.toList

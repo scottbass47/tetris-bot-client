@@ -5181,13 +5181,8 @@ var $elm$core$Task$perform = F2(
 				A2($elm$core$Task$map, toMessage, task)));
 	});
 var $elm$browser$Browser$element = _Browser_element;
-var $author$project$Main$Blank = {$: 'Blank'};
 var $author$project$Main$boardDims = _Utils_Tuple2(20, 10);
-var $elm$core$Tuple$second = function (_v0) {
-	var y = _v0.b;
-	return y;
-};
-var $author$project$Main$cols = $author$project$Main$boardDims.b;
+var $author$project$Tetromino$Blank = {$: 'Blank'};
 var $elm$core$Array$fromListHelp = F3(
 	function (list, nodeList, nodeListSize) {
 		fromListHelp:
@@ -5269,19 +5264,16 @@ var $elm$core$Array$length = function (_v0) {
 	var len = _v0.a;
 	return len;
 };
-var $author$project$Main$I = {$: 'I'};
-var $author$project$Main$J = {$: 'J'};
-var $author$project$Main$L = {$: 'L'};
-var $author$project$Main$O = {$: 'O'};
-var $author$project$Main$S = {$: 'S'};
-var $author$project$Main$T = {$: 'T'};
-var $author$project$Main$Z = {$: 'Z'};
-var $author$project$Main$minos = _List_fromArray(
-	[$author$project$Main$I, $author$project$Main$J, $author$project$Main$L, $author$project$Main$T, $author$project$Main$S, $author$project$Main$Z, $author$project$Main$O, $author$project$Main$Blank]);
+var $author$project$Tetromino$I = {$: 'I'};
+var $author$project$Tetromino$J = {$: 'J'};
+var $author$project$Tetromino$L = {$: 'L'};
+var $author$project$Tetromino$O = {$: 'O'};
+var $author$project$Tetromino$S = {$: 'S'};
+var $author$project$Tetromino$T = {$: 'T'};
+var $author$project$Tetromino$Z = {$: 'Z'};
+var $author$project$Tetromino$minos = _List_fromArray(
+	[$author$project$Tetromino$I, $author$project$Tetromino$J, $author$project$Tetromino$L, $author$project$Tetromino$T, $author$project$Tetromino$S, $author$project$Tetromino$Z, $author$project$Tetromino$O, $author$project$Tetromino$Blank]);
 var $elm$core$Basics$modBy = _Basics_modBy;
-var $elm$core$Platform$Cmd$batch = _Platform_batch;
-var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
-var $author$project$Main$rows = $author$project$Main$boardDims.a;
 var $elm$core$Maybe$withDefault = F2(
 	function (_default, maybe) {
 		if (maybe.$ === 'Just') {
@@ -5291,21 +5283,32 @@ var $elm$core$Maybe$withDefault = F2(
 			return _default;
 		}
 	});
-var $author$project$Main$init = function (_v0) {
-	var minoArr = $elm$core$Array$fromList($author$project$Main$minos);
+var $author$project$Board$initBoard = function (_v0) {
+	var rows = _v0.a;
+	var cols = _v0.b;
+	var minoArr = $elm$core$Array$fromList($author$project$Tetromino$minos);
 	var length = $elm$core$Array$length(minoArr);
 	var indexToMino = function (i) {
 		return A2(
 			$elm$core$Maybe$withDefault,
-			$author$project$Main$Blank,
+			$author$project$Tetromino$Blank,
 			function (idx) {
 				return A2($elm$core$Array$get, idx, minoArr);
 			}(
 				A2($elm$core$Basics$modBy, length, i)));
 	};
+	return {
+		arr: A2($elm$core$Array$initialize, rows * cols, indexToMino),
+		cols: cols,
+		rows: rows
+	};
+};
+var $elm$core$Platform$Cmd$batch = _Platform_batch;
+var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
+var $author$project$Main$init = function (_v0) {
 	return _Utils_Tuple2(
 		{
-			board: A2($elm$core$Array$initialize, $author$project$Main$rows * $author$project$Main$cols, indexToMino),
+			board: $author$project$Board$initBoard($author$project$Main$boardDims),
 			count: 0
 		},
 		$elm$core$Platform$Cmd$none);
@@ -5460,6 +5463,10 @@ var $author$project$Main$update = F2(
 	});
 var $author$project$Main$minoSize = 25;
 var $author$project$Main$boardHeight = $author$project$Main$minoSize * $author$project$Main$boardDims.a;
+var $elm$core$Tuple$second = function (_v0) {
+	var y = _v0.b;
+	return y;
+};
 var $author$project$Main$boardWidth = $author$project$Main$minoSize * $author$project$Main$boardDims.b;
 var $avh4$elm_color$Color$RgbaSpace = F4(
 	function (a, b, c, d) {
@@ -5627,11 +5634,12 @@ var $author$project$Main$clearScreen = A2(
 			$author$project$Main$boardHeight)
 		]));
 var $elm$html$Html$div = _VirtualDom_node('div');
-var $author$project$Main$fromArrIndex = function (i) {
-	return _Utils_Tuple2(
-		(i / $author$project$Main$cols) | 0,
-		A2($elm$core$Basics$modBy, $author$project$Main$cols, i));
-};
+var $author$project$Board$fromArrIndex = F2(
+	function (board, i) {
+		return _Utils_Tuple2(
+			(i / board.cols) | 0,
+			A2($elm$core$Basics$modBy, board.cols, i));
+	});
 var $elm$core$Elm$JsArray$foldl = _JsArray_foldl;
 var $elm$core$Elm$JsArray$indexedMap = _JsArray_indexedMap;
 var $elm$core$Array$indexedMap = F2(
@@ -5670,6 +5678,9 @@ var $elm$core$Array$indexedMap = F2(
 			true,
 			A3($elm$core$Elm$JsArray$foldl, helper, initialBuilder, tree));
 	});
+var $author$project$Board$minoCount = function (board) {
+	return board.rows * board.cols;
+};
 var $avh4$elm_color$Color$scaleFrom255 = function (c) {
 	return c / 255;
 };
@@ -5738,10 +5749,11 @@ var $elm$core$Basics$round = _Basics_round;
 var $author$project$Main$renderBoard = function (_v0) {
 	var count = _v0.count;
 	var board = _v0.board;
+	var size = $author$project$Board$minoCount(board);
 	var transformIdx = function (i) {
 		return A2(
 			$elm$core$Basics$modBy,
-			$author$project$Main$rows * $author$project$Main$cols,
+			size,
 			$elm$core$Basics$round(count / 5) + i);
 	};
 	return $elm$core$Array$toList(
@@ -5752,10 +5764,12 @@ var $author$project$Main$renderBoard = function (_v0) {
 					return A2(
 						$author$project$Main$renderMino,
 						mino,
-						$author$project$Main$fromArrIndex(
+						A2(
+							$author$project$Board$fromArrIndex,
+							board,
 							transformIdx(i)));
 				}),
-			board));
+			board.arr));
 };
 var $elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
 var $elm$html$Html$Attributes$style = $elm$virtual_dom$VirtualDom$style;

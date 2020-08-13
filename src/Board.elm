@@ -1,13 +1,14 @@
 module Board exposing (..)
 
 import Array exposing (Array)
+import List
 import Maybe exposing (withDefault)
-import Tetromino exposing (Mino(..), minos)
-import Types exposing (GridPoint)
+import Tetromino exposing (Piece(..), Tetromino, minos, minosPositions)
+import Types exposing (GridPoint, Pos)
 
 
 type alias Board =
-    { arr : Array Mino
+    { arr : Array Piece
     , rows : Int
     , cols : Int
     }
@@ -34,7 +35,7 @@ initBoard ( rows, cols ) =
     }
 
 
-minoAt : Board -> GridPoint -> Mino
+minoAt : Board -> GridPoint -> Piece
 minoAt board pos =
     Array.get (toArrIndex board pos) board.arr |> withDefault Blank
 
@@ -57,3 +58,17 @@ boardDims board =
 minoCount : Board -> Int
 minoCount board =
     board.rows * board.cols
+
+
+canPlace : Board -> Tetromino -> Bool
+canPlace board tetromino =
+    let
+        minos =
+            minosPositions tetromino
+    in
+    List.all (\mino -> inBounds board mino && minoAt board mino == Blank) minos
+
+
+inBounds : Board -> GridPoint -> Bool
+inBounds board ( r, c ) =
+    r >= 0 && r < board.rows && c >= 0 && c < board.cols

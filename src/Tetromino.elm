@@ -1,6 +1,7 @@
-module Tetromino exposing (Piece(..), minos)
+module Tetromino exposing (..)
 
 import List
+import Maybe exposing (withDefault)
 import Types exposing (GridPoint, Pos, Rotation(..))
 
 
@@ -34,6 +35,15 @@ type alias Tetromino =
 minos : List Piece
 minos =
     [ I, J, L, T, S, Z, O, Blank ]
+
+
+getOffset : Orientation -> Tetromino -> List Pos
+getOffset orientation t =
+    t.offsets
+        |> List.filter (\( o, _ ) -> o == orientation)
+        |> List.head
+        |> withDefault ( Zero, [] )
+        |> Tuple.second
 
 
 minosPositions : Tetromino -> List GridPoint

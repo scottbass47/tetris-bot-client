@@ -47,6 +47,18 @@ minoCount board =
     board.rows * board.cols
 
 
+placeTetromino : Tetromino -> Board -> Board
+placeTetromino tetromino board =
+    --clearRows rowsToClear board'
+    let
+        folder p arr =
+            Array.set (toArrIndex board p) tetromino.piece arr
+
+        -- rowsToClear = findIndices (all isFilled) . boardToList $ board'
+    in
+    { board | arr = List.foldl folder board.arr (minosPositions tetromino) }
+
+
 canPlace : Board -> Tetromino -> Bool
 canPlace board tetromino =
     let

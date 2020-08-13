@@ -9,14 +9,16 @@ import Canvas.Settings exposing (fill)
 import Color exposing (Color)
 import Html exposing (Html, div)
 import Html.Attributes exposing (style)
+import SRS exposing (tryMove)
 import Tetromino exposing (..)
 import Types exposing (GridPoint, Rotation(..))
 
 
 type alias Model =
-    { count : Float
-    , board : Board
+    { board : Board
     , currTetromino : Maybe Tetromino
+    , gravityElapsed : Float
+    , gravityThreshold : Float
     }
 
 
@@ -36,11 +38,18 @@ main =
 
 init : () -> ( Model, Cmd Msg )
 init () =
-    let
-        initialTetromino =
-            mkTetromino T |> moveTetromino ( 5, 10 ) |> rotate CW |> rotate CW
-    in
-    ( { count = 0, board = Board.initBoard boardDims, currTetromino = Just initialTetromino }, Cmd.none )
+    ( { board = Board.initBoard boardDims
+      , currTetromino = Just (spawnTetromino ())
+      , gravityElapsed = 0
+      , gravityThreshold = 500
+      }
+    , Cmd.none
+    )
+
+
+spawnTetromino : () -> Tetromino
+spawnTetromino () =
+    mkTetromino T |> moveTetromino ( 5, 17 )
 
 
 view : Model -> Html Msg
@@ -60,8 +69,39 @@ view model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Frame _ ->
-            ( { model | count = model.count + 1 }, Cmd.none )
+        Frame dt ->
+            let
+                newModel =
+                    { model | gravityElapsed = model.gravityElapsed + dt }
+                        |> doGravity
+            in
+            ( newModel, Cmd.none )
+
+
+doGravity : Model -> Model
+doGravity model =
+    case model.currTetromino of
+        Nothing ->
+            model
+
+        Just tetromino ->
+            if model.gravityElapsed >= model.gravityThreshold then
+                let
+                    newModel =
+                        case tryMove model.board tetromino ( 0, -1 ) of
+                            (Just _) as t ->
+                                { model | currTetromino = t }
+
+                            Nothing ->
+                                { model
+                                    | board = Board.placeTetromino tetromino model.board
+                                    , currTetromino = Just (spawnTetromino ())
+                                }
+                in
+                { newModel | gravityElapsed = newModel.gravityElapsed - newModel.gravityThreshold }
+
+            else
+                model
 
 
 subscriptions : Model -> Sub Msg

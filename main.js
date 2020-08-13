@@ -5181,8 +5181,6 @@ var $elm$core$Task$perform = F2(
 				A2($elm$core$Task$map, toMessage, task)));
 	});
 var $elm$browser$Browser$element = _Browser_element;
-var $author$project$Types$CW = {$: 'CW'};
-var $author$project$Tetromino$T = {$: 'T'};
 var $author$project$Main$boardDims = _Utils_Tuple2(20, 10);
 var $author$project$Tetromino$Blank = {$: 'Blank'};
 var $elm$core$Array$repeat = F2(
@@ -5203,6 +5201,9 @@ var $author$project$Board$initBoard = function (_v0) {
 		rows: rows
 	};
 };
+var $elm$core$Platform$Cmd$batch = _Platform_batch;
+var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
+var $author$project$Tetromino$T = {$: 'T'};
 var $author$project$Tetromino$Tetromino = F5(
 	function (piece, orientation, pos, localPos, offsets) {
 		return {localPos: localPos, offsets: offsets, orientation: orientation, piece: piece, pos: pos};
@@ -5421,69 +5422,20 @@ var $author$project$Tetromino$moveTetromino = F2(
 				pos: _Utils_Tuple2(x + t.pos.a, y + t.pos.b)
 			});
 	});
-var $elm$core$Platform$Cmd$batch = _Platform_batch;
-var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
-var $author$project$Tetromino$rotateTetromino = F2(
-	function (o, tetromino) {
-		return _Utils_update(
-			tetromino,
-			{orientation: o});
-	});
-var $author$project$Tetromino$rotateCCW = function (tetromino) {
-	var newOrientation = function () {
-		var _v0 = tetromino.orientation;
-		switch (_v0.$) {
-			case 'Zero':
-				return $author$project$Tetromino$Left;
-			case 'Left':
-				return $author$project$Tetromino$Two;
-			case 'Two':
-				return $author$project$Tetromino$Right;
-			default:
-				return $author$project$Tetromino$Zero;
-		}
-	}();
-	return A2($author$project$Tetromino$rotateTetromino, newOrientation, tetromino);
-};
-var $author$project$Tetromino$rotateCW = function (tetromino) {
-	var newOrientation = function () {
-		var _v0 = tetromino.orientation;
-		switch (_v0.$) {
-			case 'Zero':
-				return $author$project$Tetromino$Right;
-			case 'Right':
-				return $author$project$Tetromino$Two;
-			case 'Two':
-				return $author$project$Tetromino$Left;
-			default:
-				return $author$project$Tetromino$Zero;
-		}
-	}();
-	return A2($author$project$Tetromino$rotateTetromino, newOrientation, tetromino);
-};
-var $author$project$Tetromino$rotate = function (dir) {
-	if (dir.$ === 'CW') {
-		return $author$project$Tetromino$rotateCW;
-	} else {
-		return $author$project$Tetromino$rotateCCW;
-	}
+var $author$project$Main$spawnTetromino = function (_v0) {
+	return A2(
+		$author$project$Tetromino$moveTetromino,
+		_Utils_Tuple2(5, 17),
+		$author$project$Tetromino$mkTetromino($author$project$Tetromino$T));
 };
 var $author$project$Main$init = function (_v0) {
-	var initialTetromino = A2(
-		$author$project$Tetromino$rotate,
-		$author$project$Types$CW,
-		A2(
-			$author$project$Tetromino$rotate,
-			$author$project$Types$CW,
-			A2(
-				$author$project$Tetromino$moveTetromino,
-				_Utils_Tuple2(5, 10),
-				$author$project$Tetromino$mkTetromino($author$project$Tetromino$T))));
 	return _Utils_Tuple2(
 		{
 			board: $author$project$Board$initBoard($author$project$Main$boardDims),
-			count: 0,
-			currTetromino: $elm$core$Maybe$Just(initialTetromino)
+			currTetromino: $elm$core$Maybe$Just(
+				$author$project$Main$spawnTetromino(_Utils_Tuple0)),
+			gravityElapsed: 0,
+			gravityThreshold: 500
 		},
 		$elm$core$Platform$Cmd$none);
 };
@@ -5627,13 +5579,273 @@ var $elm$browser$Browser$Events$onAnimationFrameDelta = $elm$browser$Browser$Ani
 var $author$project$Main$subscriptions = function (_v0) {
 	return $elm$browser$Browser$Events$onAnimationFrameDelta($author$project$Main$Frame);
 };
+var $elm$core$Basics$ge = _Utils_ge;
+var $author$project$Tetromino$rotateMino = F2(
+	function (orientation, _v0) {
+		var x = _v0.a;
+		var y = _v0.b;
+		switch (orientation.$) {
+			case 'Zero':
+				return _Utils_Tuple2(x, y);
+			case 'Right':
+				return _Utils_Tuple2(y, -x);
+			case 'Two':
+				return _Utils_Tuple2(-x, -y);
+			default:
+				return _Utils_Tuple2(-y, x);
+		}
+	});
+var $author$project$Tetromino$minosPositions = function (tetromino) {
+	var o = tetromino.orientation;
+	var rotatedMinos = A2(
+		$elm$core$List$map,
+		$author$project$Tetromino$rotateMino(o),
+		tetromino.localPos);
+	var _v0 = tetromino.pos;
+	var px = _v0.a;
+	var py = _v0.b;
+	var shiftedMinos = A2(
+		$elm$core$List$map,
+		function (_v2) {
+			var x = _v2.a;
+			var y = _v2.b;
+			return _Utils_Tuple2(x + px, y + py);
+		},
+		rotatedMinos);
+	return A2(
+		$elm$core$List$map,
+		function (_v1) {
+			var x = _v1.a;
+			var y = _v1.b;
+			return _Utils_Tuple2(y, x);
+		},
+		shiftedMinos);
+};
+var $elm$core$Bitwise$and = _Bitwise_and;
+var $elm$core$Bitwise$shiftRightZfBy = _Bitwise_shiftRightZfBy;
+var $elm$core$Array$bitMask = 4294967295 >>> (32 - $elm$core$Array$shiftStep);
+var $elm$core$Elm$JsArray$unsafeGet = _JsArray_unsafeGet;
+var $elm$core$Elm$JsArray$unsafeSet = _JsArray_unsafeSet;
+var $elm$core$Array$setHelp = F4(
+	function (shift, index, value, tree) {
+		var pos = $elm$core$Array$bitMask & (index >>> shift);
+		var _v0 = A2($elm$core$Elm$JsArray$unsafeGet, pos, tree);
+		if (_v0.$ === 'SubTree') {
+			var subTree = _v0.a;
+			var newSub = A4($elm$core$Array$setHelp, shift - $elm$core$Array$shiftStep, index, value, subTree);
+			return A3(
+				$elm$core$Elm$JsArray$unsafeSet,
+				pos,
+				$elm$core$Array$SubTree(newSub),
+				tree);
+		} else {
+			var values = _v0.a;
+			var newLeaf = A3($elm$core$Elm$JsArray$unsafeSet, $elm$core$Array$bitMask & index, value, values);
+			return A3(
+				$elm$core$Elm$JsArray$unsafeSet,
+				pos,
+				$elm$core$Array$Leaf(newLeaf),
+				tree);
+		}
+	});
+var $elm$core$Bitwise$shiftLeftBy = _Bitwise_shiftLeftBy;
+var $elm$core$Array$tailIndex = function (len) {
+	return (len >>> 5) << 5;
+};
+var $elm$core$Array$set = F3(
+	function (index, value, array) {
+		var len = array.a;
+		var startShift = array.b;
+		var tree = array.c;
+		var tail = array.d;
+		return ((index < 0) || (_Utils_cmp(index, len) > -1)) ? array : ((_Utils_cmp(
+			index,
+			$elm$core$Array$tailIndex(len)) > -1) ? A4(
+			$elm$core$Array$Array_elm_builtin,
+			len,
+			startShift,
+			tree,
+			A3($elm$core$Elm$JsArray$unsafeSet, $elm$core$Array$bitMask & index, value, tail)) : A4(
+			$elm$core$Array$Array_elm_builtin,
+			len,
+			startShift,
+			A4($elm$core$Array$setHelp, startShift, index, value, tree),
+			tail));
+	});
+var $author$project$Board$toArrIndex = F2(
+	function (board, _v0) {
+		var r = _v0.a;
+		var c = _v0.b;
+		return (r * board.cols) + c;
+	});
+var $author$project$Board$placeTetromino = F2(
+	function (tetromino, board) {
+		var folder = F2(
+			function (p, arr) {
+				return A3(
+					$elm$core$Array$set,
+					A2($author$project$Board$toArrIndex, board, p),
+					tetromino.piece,
+					arr);
+			});
+		return _Utils_update(
+			board,
+			{
+				arr: A3(
+					$elm$core$List$foldl,
+					folder,
+					board.arr,
+					$author$project$Tetromino$minosPositions(tetromino))
+			});
+	});
+var $elm$core$List$any = F2(
+	function (isOkay, list) {
+		any:
+		while (true) {
+			if (!list.b) {
+				return false;
+			} else {
+				var x = list.a;
+				var xs = list.b;
+				if (isOkay(x)) {
+					return true;
+				} else {
+					var $temp$isOkay = isOkay,
+						$temp$list = xs;
+					isOkay = $temp$isOkay;
+					list = $temp$list;
+					continue any;
+				}
+			}
+		}
+	});
+var $elm$core$Basics$not = _Basics_not;
+var $elm$core$List$all = F2(
+	function (isOkay, list) {
+		return !A2(
+			$elm$core$List$any,
+			A2($elm$core$Basics$composeL, $elm$core$Basics$not, isOkay),
+			list);
+	});
+var $author$project$Board$inBounds = F2(
+	function (board, _v0) {
+		var r = _v0.a;
+		var c = _v0.b;
+		return (r >= 0) && ((_Utils_cmp(r, board.rows) < 0) && ((c >= 0) && (_Utils_cmp(c, board.cols) < 0)));
+	});
+var $elm$core$Array$getHelp = F3(
+	function (shift, index, tree) {
+		getHelp:
+		while (true) {
+			var pos = $elm$core$Array$bitMask & (index >>> shift);
+			var _v0 = A2($elm$core$Elm$JsArray$unsafeGet, pos, tree);
+			if (_v0.$ === 'SubTree') {
+				var subTree = _v0.a;
+				var $temp$shift = shift - $elm$core$Array$shiftStep,
+					$temp$index = index,
+					$temp$tree = subTree;
+				shift = $temp$shift;
+				index = $temp$index;
+				tree = $temp$tree;
+				continue getHelp;
+			} else {
+				var values = _v0.a;
+				return A2($elm$core$Elm$JsArray$unsafeGet, $elm$core$Array$bitMask & index, values);
+			}
+		}
+	});
+var $elm$core$Array$get = F2(
+	function (index, _v0) {
+		var len = _v0.a;
+		var startShift = _v0.b;
+		var tree = _v0.c;
+		var tail = _v0.d;
+		return ((index < 0) || (_Utils_cmp(index, len) > -1)) ? $elm$core$Maybe$Nothing : ((_Utils_cmp(
+			index,
+			$elm$core$Array$tailIndex(len)) > -1) ? $elm$core$Maybe$Just(
+			A2($elm$core$Elm$JsArray$unsafeGet, $elm$core$Array$bitMask & index, tail)) : $elm$core$Maybe$Just(
+			A3($elm$core$Array$getHelp, startShift, index, tree)));
+	});
+var $elm$core$Maybe$withDefault = F2(
+	function (_default, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return value;
+		} else {
+			return _default;
+		}
+	});
+var $author$project$Board$minoAt = F2(
+	function (board, pos) {
+		return A2(
+			$elm$core$Maybe$withDefault,
+			$author$project$Tetromino$Blank,
+			A2(
+				$elm$core$Array$get,
+				A2($author$project$Board$toArrIndex, board, pos),
+				board.arr));
+	});
+var $author$project$Board$canPlace = F2(
+	function (board, tetromino) {
+		var minos = $author$project$Tetromino$minosPositions(tetromino);
+		return A2(
+			$elm$core$List$all,
+			function (mino) {
+				return A2($author$project$Board$inBounds, board, mino) && _Utils_eq(
+					A2($author$project$Board$minoAt, board, mino),
+					$author$project$Tetromino$Blank);
+			},
+			minos);
+	});
+var $author$project$SRS$tryMove = F3(
+	function (board, tetromino, delta) {
+		var t = A2($author$project$Tetromino$moveTetromino, delta, tetromino);
+		return A2($author$project$Board$canPlace, board, t) ? $elm$core$Maybe$Just(t) : $elm$core$Maybe$Nothing;
+	});
+var $author$project$Main$doGravity = function (model) {
+	var _v0 = model.currTetromino;
+	if (_v0.$ === 'Nothing') {
+		return model;
+	} else {
+		var tetromino = _v0.a;
+		if (_Utils_cmp(model.gravityElapsed, model.gravityThreshold) > -1) {
+			var newModel = function () {
+				var _v1 = A3(
+					$author$project$SRS$tryMove,
+					model.board,
+					tetromino,
+					_Utils_Tuple2(0, -1));
+				if (_v1.$ === 'Just') {
+					var t = _v1;
+					return _Utils_update(
+						model,
+						{currTetromino: t});
+				} else {
+					return _Utils_update(
+						model,
+						{
+							board: A2($author$project$Board$placeTetromino, tetromino, model.board),
+							currTetromino: $elm$core$Maybe$Just(
+								$author$project$Main$spawnTetromino(_Utils_Tuple0))
+						});
+				}
+			}();
+			return _Utils_update(
+				newModel,
+				{gravityElapsed: newModel.gravityElapsed - newModel.gravityThreshold});
+		} else {
+			return model;
+		}
+	}
+};
 var $author$project$Main$update = F2(
 	function (msg, model) {
-		return _Utils_Tuple2(
+		var dt = msg.a;
+		var newModel = $author$project$Main$doGravity(
 			_Utils_update(
 				model,
-				{count: model.count + 1}),
-			$elm$core$Platform$Cmd$none);
+				{gravityElapsed: model.gravityElapsed + dt}));
+		return _Utils_Tuple2(newModel, $elm$core$Platform$Cmd$none);
 	});
 var $author$project$Main$minoSize = 25;
 var $author$project$Main$boardHeight = $author$project$Main$minoSize * $author$project$Main$boardDims.a;
@@ -5813,11 +6025,6 @@ var $author$project$Board$fromArrIndex = F2(
 	});
 var $elm$core$Elm$JsArray$foldl = _JsArray_foldl;
 var $elm$core$Elm$JsArray$indexedMap = _JsArray_indexedMap;
-var $elm$core$Bitwise$shiftLeftBy = _Bitwise_shiftLeftBy;
-var $elm$core$Bitwise$shiftRightZfBy = _Bitwise_shiftRightZfBy;
-var $elm$core$Array$tailIndex = function (len) {
-	return (len >>> 5) << 5;
-};
 var $elm$core$Array$indexedMap = F2(
 	function (func, _v0) {
 		var len = _v0.a;
@@ -5930,47 +6137,6 @@ var $author$project$Main$renderBoard = function (_v0) {
 						A2($author$project$Board$fromArrIndex, board, i));
 				}),
 			board.arr));
-};
-var $author$project$Tetromino$rotateMino = F2(
-	function (orientation, _v0) {
-		var x = _v0.a;
-		var y = _v0.b;
-		switch (orientation.$) {
-			case 'Zero':
-				return _Utils_Tuple2(x, y);
-			case 'Right':
-				return _Utils_Tuple2(y, -x);
-			case 'Two':
-				return _Utils_Tuple2(-x, -y);
-			default:
-				return _Utils_Tuple2(-y, x);
-		}
-	});
-var $author$project$Tetromino$minosPositions = function (tetromino) {
-	var o = tetromino.orientation;
-	var rotatedMinos = A2(
-		$elm$core$List$map,
-		$author$project$Tetromino$rotateMino(o),
-		tetromino.localPos);
-	var _v0 = tetromino.pos;
-	var px = _v0.a;
-	var py = _v0.b;
-	var shiftedMinos = A2(
-		$elm$core$List$map,
-		function (_v2) {
-			var x = _v2.a;
-			var y = _v2.b;
-			return _Utils_Tuple2(x + px, y + py);
-		},
-		rotatedMinos);
-	return A2(
-		$elm$core$List$map,
-		function (_v1) {
-			var x = _v1.a;
-			var y = _v1.b;
-			return _Utils_Tuple2(y, x);
-		},
-		shiftedMinos);
 };
 var $author$project$Main$renderTetromino = function (tetromino) {
 	return A2(

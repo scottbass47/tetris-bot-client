@@ -10,12 +10,13 @@ import Color exposing (Color)
 import Html exposing (Html, div)
 import Html.Attributes exposing (style)
 import Tetromino exposing (..)
-import Types exposing (GridPoint)
+import Types exposing (GridPoint, Rotation(..))
 
 
 type alias Model =
     { count : Float
     , board : Board
+    , currTetromino : Maybe Tetromino
     }
 
 
@@ -35,7 +36,11 @@ main =
 
 init : () -> ( Model, Cmd Msg )
 init () =
-    ( { count = 0, board = Board.initBoard boardDims }, Cmd.none )
+    let
+        initialTetromino =
+            mkTetromino T |> moveTetromino ( 5, 10 ) |> rotate CW |> rotate CW
+    in
+    ( { count = 0, board = Board.initBoard boardDims, currTetromino = Just initialTetromino }, Cmd.none )
 
 
 view : Model -> Html Msg
@@ -48,9 +53,7 @@ view model =
         [ Canvas.toHtml
             ( round boardWidth, round boardHeight )
             []
-            (clearScreen
-                :: renderBoard model
-            )
+            (renderGame model)
         ]
 
 
@@ -116,7 +119,7 @@ minoColor mino =
             Color.rgb255 240 240 1
 
         Blank ->
-            Color.white
+            Color.rgb255 197 197 197
 
 
 minoPosition : GridPoint -> Point
@@ -134,9 +137,29 @@ minoPosition ( r, c ) =
     ( c |> toFloat |> (*) minoSize |> (+) offX, r |> toFloat |> (*) minoSize |> (+) offY |> flipY )
 
 
+renderGame : Model -> List Renderable
+renderGame model =
+    let
+        currTetrominoRender =
+            case model.currTetromino of
+                Nothing ->
+                    []
+
+                Just t ->
+                    renderTetromino t
+    in
+    -- clearScreen :: currTetrominoRender ++ renderBoard model
+    clearScreen :: renderBoard model ++ currTetrominoRender
+
+
 clearScreen : Renderable
 clearScreen =
     shapes [ fill Color.black ] [ rect ( 0, 0 ) boardWidth boardHeight ]
+
+
+renderTetromino : Tetromino -> List Renderable
+renderTetromino tetromino =
+    List.map (renderMino tetromino.piece) (minosPositions tetromino)
 
 
 renderMino : Piece -> GridPoint -> Renderable
@@ -145,12 +168,5 @@ renderMino mino pos =
 
 
 renderBoard : Model -> List Renderable
-renderBoard { count, board } =
-    let
-        size =
-            Board.minoCount board
-
-        transformIdx i =
-            i |> (+) (round (count / 5)) |> Basics.modBy size
-    in
-    Array.indexedMap (\i mino -> renderMino mino (i |> transformIdx |> Board.fromArrIndex board)) board.arr |> Array.toList
+renderBoard { board } =
+    Array.indexedMap (\i mino -> renderMino mino (Board.fromArrIndex board i)) board.arr |> Array.toList

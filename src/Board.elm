@@ -16,20 +16,7 @@ type alias Board =
 
 initBoard : GridPoint -> Board
 initBoard ( rows, cols ) =
-    let
-        minoArr =
-            Array.fromList minos
-
-        length =
-            Array.length minoArr
-
-        indexToMino i =
-            i
-                |> Basics.modBy length
-                |> (\idx -> Array.get idx minoArr)
-                |> withDefault Blank
-    in
-    { arr = Array.initialize (rows * cols) indexToMino
+    { arr = Array.repeat (rows * cols) Blank
     , rows = rows
     , cols = cols
     }

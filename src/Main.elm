@@ -3,12 +3,15 @@ module Main exposing (main)
 import Array
 import Board exposing (Board, minoCount)
 import Browser
-import Browser.Events exposing (onAnimationFrameDelta)
+import Browser.Events exposing (onAnimationFrameDelta, onKeyDown, onKeyPress)
 import Canvas exposing (Point, Renderable, rect, shapes)
 import Canvas.Settings exposing (fill)
 import Color exposing (Color)
 import Html exposing (Html, div)
 import Html.Attributes exposing (style)
+import Json.Decode as Json
+import Keyboard.Event exposing (KeyCode, KeyboardEvent, decodeKeyboardEvent)
+import Keyboard.Key as Keys exposing (Key)
 import SRS exposing (tryMove)
 import Tetromino exposing (..)
 import Types exposing (GridPoint, Rotation(..))
@@ -24,6 +27,7 @@ type alias Model =
 
 type Msg
     = Frame Float
+    | HandleInput KeyboardEvent
 
 
 main : Program () Model Msg
@@ -41,7 +45,7 @@ init () =
     ( { board = Board.initBoard boardDims
       , currTetromino = Just (spawnTetromino ())
       , gravityElapsed = 0
-      , gravityThreshold = 500
+      , gravityThreshold = 200
       }
     , Cmd.none
     )
@@ -77,6 +81,58 @@ update msg model =
             in
             ( newModel, Cmd.none )
 
+        HandleInput input ->
+            ( handleInput input.keyCode model, Cmd.none )
+
+
+handleInput : Key -> Model -> Model
+handleInput key model =
+    let
+        delta =
+            case key of
+                Keys.Left ->
+                    ( -1, 0 )
+
+                Keys.Right ->
+                    ( 1, 0 )
+
+                _ ->
+                    ( 0, 0 )
+
+        rotation =
+            case key of
+                Keys.Z ->
+                    Just CW
+
+                Keys.X ->
+                    Just CCW
+
+                _ ->
+                    Nothing
+
+        srsResult =
+            model.currTetromino
+                |> Maybe.andThen (\t -> SRS.tryMove model.board t delta)
+                |> Maybe.andThen
+                    (\t ->
+                        case rotation of
+                            Nothing ->
+                                Just t
+
+                            Just r ->
+                                SRS.tryRotate model.board t r
+                    )
+
+        newTetromino =
+            case srsResult of
+                Nothing ->
+                    model.currTetromino
+
+                _ as t ->
+                    t
+    in
+    { model | currTetromino = newTetromino }
+
 
 doGravity : Model -> Model
 doGravity model =
@@ -106,7 +162,10 @@ doGravity model =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    onAnimationFrameDelta Frame
+    Sub.batch
+        [ onAnimationFrameDelta Frame
+        , onKeyDown (Json.map HandleInput decodeKeyboardEvent)
+        ]
 
 
 boardDims : GridPoint

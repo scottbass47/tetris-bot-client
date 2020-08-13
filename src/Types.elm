@@ -12,3 +12,8 @@ type alias Pos =
 type Rotation
     = CW
     | CCW
+
+
+type Input
+    = MoveLeft
+    | MoveRight

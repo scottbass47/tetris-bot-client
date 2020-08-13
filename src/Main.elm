@@ -91,7 +91,7 @@ boardHeight =
     boardDims |> Tuple.first |> toFloat |> (*) minoSize
 
 
-minoColor : Mino -> Color
+minoColor : Piece -> Color
 minoColor mino =
     case mino of
         I ->
@@ -139,7 +139,7 @@ clearScreen =
     shapes [ fill Color.black ] [ rect ( 0, 0 ) boardWidth boardHeight ]
 
 
-renderMino : Mino -> GridPoint -> Renderable
+renderMino : Piece -> GridPoint -> Renderable
 renderMino mino pos =
     shapes [ fill (minoColor mino) ] [ rect (minoPosition pos) minoSize minoSize ]
 

@@ -14,7 +14,7 @@ import Keyboard.Event exposing (KeyCode, KeyboardEvent, decodeKeyboardEvent)
 import Keyboard.Key as Keys exposing (Key)
 import SRS exposing (tryMove)
 import Tetromino exposing (..)
-import Types exposing (GridPoint, Rotation(..))
+import Types exposing (GridPoint, Pos, Rotation(..))
 
 
 type alias Model =
@@ -88,50 +88,76 @@ update msg model =
 handleInput : Key -> Model -> Model
 handleInput key model =
     let
-        delta =
+        newModel =
             case key of
                 Keys.Left ->
-                    ( -1, 0 )
+                    movePiece ( -1, 0 ) model
 
                 Keys.Right ->
-                    ( 1, 0 )
+                    movePiece ( 1, 0 ) model
 
-                _ ->
-                    ( 0, 0 )
-
-        rotation =
-            case key of
                 Keys.Z ->
-                    Just CW
+                    rotatePiece CW model
 
                 Keys.X ->
-                    Just CCW
+                    rotatePiece CCW model
+
+                Keys.Up ->
+                    doHardDrop model
 
                 _ ->
-                    Nothing
-
-        srsResult =
-            model.currTetromino
-                |> Maybe.andThen (\t -> SRS.tryMove model.board t delta)
-                |> Maybe.andThen
-                    (\t ->
-                        case rotation of
-                            Nothing ->
-                                Just t
-
-                            Just r ->
-                                SRS.tryRotate model.board t r
-                    )
-
-        newTetromino =
-            case srsResult of
-                Nothing ->
-                    model.currTetromino
-
-                _ as t ->
-                    t
+                    model
     in
-    { model | currTetromino = newTetromino }
+    newModel
+
+
+movePiece : Pos -> Model -> Model
+movePiece delta model =
+    case model.currTetromino of
+        Nothing ->
+            model
+
+        Just t ->
+            case SRS.tryMove model.board t delta of
+                Nothing ->
+                    model
+
+                Just newT ->
+                    { model | currTetromino = Just newT }
+
+
+rotatePiece : Rotation -> Model -> Model
+rotatePiece rotation model =
+    case model.currTetromino of
+        Nothing ->
+            model
+
+        Just t ->
+            case SRS.tryRotate model.board t rotation of
+                Nothing ->
+                    model
+
+                Just newT ->
+                    { model | currTetromino = Just newT }
+
+
+doHardDrop : Model -> Model
+doHardDrop model =
+    case model.currTetromino of
+        Nothing ->
+            model
+
+        Just tetromino ->
+            let
+                f t =
+                    case SRS.tryMove model.board t ( 0, -1 ) of
+                        Nothing ->
+                            { model | currTetromino = Just t }
+
+                        Just newT ->
+                            f newT
+            in
+            f tetromino
 
 
 doGravity : Model -> Model

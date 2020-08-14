@@ -6581,13 +6581,55 @@ var $author$project$Main$doGravity = function (model) {
 };
 var $author$project$Types$CCW = {$: 'CCW'};
 var $author$project$Types$CW = {$: 'CW'};
-var $elm$core$Maybe$andThen = F2(
-	function (callback, maybeValue) {
-		if (maybeValue.$ === 'Just') {
-			var value = maybeValue.a;
-			return callback(value);
+var $author$project$Main$doHardDrop = function (model) {
+	var _v0 = model.currTetromino;
+	if (_v0.$ === 'Nothing') {
+		return model;
+	} else {
+		var tetromino = _v0.a;
+		var f = function (t) {
+			f:
+			while (true) {
+				var _v1 = A3(
+					$author$project$SRS$tryMove,
+					model.board,
+					t,
+					_Utils_Tuple2(0, -1));
+				if (_v1.$ === 'Nothing') {
+					return _Utils_update(
+						model,
+						{
+							currTetromino: $elm$core$Maybe$Just(t)
+						});
+				} else {
+					var newT = _v1.a;
+					var $temp$t = newT;
+					t = $temp$t;
+					continue f;
+				}
+			}
+		};
+		return f(tetromino);
+	}
+};
+var $author$project$Main$movePiece = F2(
+	function (delta, model) {
+		var _v0 = model.currTetromino;
+		if (_v0.$ === 'Nothing') {
+			return model;
 		} else {
-			return $elm$core$Maybe$Nothing;
+			var t = _v0.a;
+			var _v1 = A3($author$project$SRS$tryMove, model.board, t, delta);
+			if (_v1.$ === 'Nothing') {
+				return model;
+			} else {
+				var newT = _v1.a;
+				return _Utils_update(
+					model,
+					{
+						currTetromino: $elm$core$Maybe$Just(newT)
+					});
+			}
 		}
 	});
 var $elm$core$List$filter = F2(
@@ -6743,55 +6785,51 @@ var $author$project$SRS$tryRotate = F3(
 		var tOffsets = A2($author$project$SRS$getOffsets, t, orientations);
 		return A3($author$project$SRS$tryOffsets, board, t, tOffsets);
 	});
+var $author$project$Main$rotatePiece = F2(
+	function (rotation, model) {
+		var _v0 = model.currTetromino;
+		if (_v0.$ === 'Nothing') {
+			return model;
+		} else {
+			var t = _v0.a;
+			var _v1 = A3($author$project$SRS$tryRotate, model.board, t, rotation);
+			if (_v1.$ === 'Nothing') {
+				return model;
+			} else {
+				var newT = _v1.a;
+				return _Utils_update(
+					model,
+					{
+						currTetromino: $elm$core$Maybe$Just(newT)
+					});
+			}
+		}
+	});
 var $author$project$Main$handleInput = F2(
 	function (key, model) {
-		var rotation = function () {
-			switch (key.$) {
-				case 'Z':
-					return $elm$core$Maybe$Just($author$project$Types$CW);
-				case 'X':
-					return $elm$core$Maybe$Just($author$project$Types$CCW);
-				default:
-					return $elm$core$Maybe$Nothing;
-			}
-		}();
-		var delta = function () {
+		var newModel = function () {
 			switch (key.$) {
 				case 'Left':
-					return _Utils_Tuple2(-1, 0);
+					return A2(
+						$author$project$Main$movePiece,
+						_Utils_Tuple2(-1, 0),
+						model);
 				case 'Right':
-					return _Utils_Tuple2(1, 0);
+					return A2(
+						$author$project$Main$movePiece,
+						_Utils_Tuple2(1, 0),
+						model);
+				case 'Z':
+					return A2($author$project$Main$rotatePiece, $author$project$Types$CW, model);
+				case 'X':
+					return A2($author$project$Main$rotatePiece, $author$project$Types$CCW, model);
+				case 'Up':
+					return $author$project$Main$doHardDrop(model);
 				default:
-					return _Utils_Tuple2(0, 0);
+					return model;
 			}
 		}();
-		var srsResult = A2(
-			$elm$core$Maybe$andThen,
-			function (t) {
-				if (rotation.$ === 'Nothing') {
-					return $elm$core$Maybe$Just(t);
-				} else {
-					var r = rotation.a;
-					return A3($author$project$SRS$tryRotate, model.board, t, r);
-				}
-			},
-			A2(
-				$elm$core$Maybe$andThen,
-				function (t) {
-					return A3($author$project$SRS$tryMove, model.board, t, delta);
-				},
-				model.currTetromino));
-		var newTetromino = function () {
-			if (srsResult.$ === 'Nothing') {
-				return model.currTetromino;
-			} else {
-				var t = srsResult;
-				return t;
-			}
-		}();
-		return _Utils_update(
-			model,
-			{currTetromino: newTetromino});
+		return newModel;
 	});
 var $author$project$Main$update = F2(
 	function (msg, model) {

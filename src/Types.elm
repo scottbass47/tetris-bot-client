@@ -17,3 +17,4 @@ type Rotation
 type Input
     = MoveLeft
     | MoveRight
+    | HardDrop

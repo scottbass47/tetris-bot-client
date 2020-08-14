@@ -3,7 +3,7 @@ module Main exposing (main)
 import Array
 import Board exposing (Board, minoCount)
 import Browser
-import Browser.Events exposing (onAnimationFrameDelta, onKeyDown, onKeyPress)
+import Browser.Events exposing (onAnimationFrameDelta, onKeyDown, onKeyPress, onKeyUp)
 import Canvas exposing (Point, Renderable, rect, shapes)
 import Canvas.Settings exposing (fill)
 import Color exposing (Color)

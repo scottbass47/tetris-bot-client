@@ -49,14 +49,50 @@ minoCount board =
 
 placeTetromino : Tetromino -> Board -> Board
 placeTetromino tetromino board =
-    --clearRows rowsToClear board'
     let
         folder p arr =
             Array.set (toArrIndex board p) tetromino.piece arr
 
-        -- rowsToClear = findIndices (all isFilled) . boardToList $ board'
+        newArr =
+            List.foldl folder board.arr (minosPositions tetromino)
+
+        rowsToClear i arr =
+            if i == board.rows then
+                []
+
+            else
+                let
+                    currentRow =
+                        Array.slice (i * board.cols) ((i + 1) * board.cols) arr
+
+                    filteredRow =
+                        Array.filter (\m -> m == Blank) currentRow
+                in
+                if Array.length filteredRow == 0 then
+                    i :: rowsToClear (i + 1) arr
+
+                else
+                    rowsToClear (i + 1) arr
     in
-    { board | arr = List.foldl folder board.arr (minosPositions tetromino) }
+    { board | arr = newArr } |> clearRows (rowsToClear 0 newArr)
+
+
+clearRows : List Int -> Board -> Board
+clearRows toClear board =
+    let
+        numRowsToClear =
+            List.length toClear
+
+        newArr =
+            board.arr
+                |> Array.indexedMap (\i m -> ( fromArrIndex board i |> Tuple.first, m ))
+                |> Array.filter (\( r, _ ) -> List.member r toClear |> not)
+                |> Array.map Tuple.second
+
+        newRows =
+            Array.repeat (numRowsToClear * board.cols) Blank
+    in
+    { board | arr = Array.append newArr newRows }
 
 
 canPlace : Board -> Tetromino -> Bool

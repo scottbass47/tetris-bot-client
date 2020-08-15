@@ -10,6 +10,7 @@ type alias GameState =
     , currTetromino : Maybe Tetromino
     , gravityFrames : Float
     , level : Int
+    , softDropping : Bool
     }
 
 
@@ -23,7 +24,8 @@ initialGameState () =
     { board = Board.initBoard boardDims
     , currTetromino = Just (spawnTetromino ())
     , gravityFrames = 0
-    , level = 8
+    , level = 0
+    , softDropping = False
     }
 
 

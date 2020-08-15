@@ -5432,7 +5432,8 @@ var $author$project$GameState$initialGameState = function (_v0) {
 		currTetromino: $elm$core$Maybe$Just(
 			$author$project$GameState$spawnTetromino(_Utils_Tuple0)),
 		gravityFrames: 0,
-		level: 8
+		level: 0,
+		softDropping: false
 	};
 };
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
@@ -5445,8 +5446,11 @@ var $author$project$Main$init = function (_v0) {
 var $author$project$Main$Frame = function (a) {
 	return {$: 'Frame', a: a};
 };
-var $author$project$Main$HandleInput = function (a) {
-	return {$: 'HandleInput', a: a};
+var $author$project$Main$KeyDown = function (a) {
+	return {$: 'KeyDown', a: a};
+};
+var $author$project$Main$KeyUp = function (a) {
+	return {$: 'KeyUp', a: a};
 };
 var $elm$core$Platform$Sub$batch = _Platform_batch;
 var $Gizra$elm_keyboard_event$Keyboard$Event$KeyboardEvent = F7(
@@ -6314,13 +6318,16 @@ var $elm$browser$Browser$Events$on = F3(
 			A3($elm$browser$Browser$Events$MySub, node, name, decoder));
 	});
 var $elm$browser$Browser$Events$onKeyDown = A2($elm$browser$Browser$Events$on, $elm$browser$Browser$Events$Document, 'keydown');
+var $elm$browser$Browser$Events$onKeyUp = A2($elm$browser$Browser$Events$on, $elm$browser$Browser$Events$Document, 'keyup');
 var $author$project$Main$subscriptions = function (_v0) {
 	return $elm$core$Platform$Sub$batch(
 		_List_fromArray(
 			[
 				$elm$browser$Browser$Events$onAnimationFrameDelta($author$project$Main$Frame),
 				$elm$browser$Browser$Events$onKeyDown(
-				A2($elm$json$Json$Decode$map, $author$project$Main$HandleInput, $Gizra$elm_keyboard_event$Keyboard$Event$decodeKeyboardEvent))
+				A2($elm$json$Json$Decode$map, $author$project$Main$KeyDown, $Gizra$elm_keyboard_event$Keyboard$Event$decodeKeyboardEvent)),
+				$elm$browser$Browser$Events$onKeyUp(
+				A2($elm$json$Json$Decode$map, $author$project$Main$KeyUp, $Gizra$elm_keyboard_event$Keyboard$Event$decodeKeyboardEvent))
 			]));
 };
 var $elm$core$Basics$ge = _Utils_ge;
@@ -7062,6 +7069,9 @@ var $author$project$Board$placeTetromino = F2(
 				board,
 				{arr: newArr}));
 	});
+var $author$project$Gravity$softDropTable = $elm$core$Array$fromList(
+	_List_fromArray(
+		[3, 3, 2, 2, 1, 1, 1, 1, 1, 1, 1]));
 var $elm$core$List$all = F2(
 	function (isOkay, list) {
 		return !A2(
@@ -7120,7 +7130,10 @@ var $author$project$Gravity$doGravity = function (state) {
 		var gravityLevel = A2(
 			$elm$core$Maybe$withDefault,
 			0,
-			A2($elm$core$Array$get, state.level, $author$project$Gravity$gravityTable));
+			A2(
+				$elm$core$Array$get,
+				state.level,
+				state.softDropping ? $author$project$Gravity$softDropTable : $author$project$Gravity$gravityTable));
 		var updateGravityFrames = function (s) {
 			return _Utils_update(
 				s,
@@ -7186,6 +7199,14 @@ var $author$project$Main$doHardDrop = function (model) {
 		};
 		return f(tetromino);
 	}
+};
+var $author$project$Main$doSoftDrop = function (model) {
+	return _Utils_update(
+		model,
+		{
+			gravityFrames: (!model.softDropping) ? 0 : model.gravityFrames,
+			softDropping: true
+		});
 };
 var $author$project$Main$movePiece = F2(
 	function (delta, model) {
@@ -7400,6 +7421,8 @@ var $author$project$Main$handleInput = F2(
 					return A2($author$project$Main$rotatePiece, $author$project$Types$CCW, model);
 				case 'Up':
 					return $author$project$Main$doHardDrop(model);
+				case 'Down':
+					return $author$project$Main$doSoftDrop(model);
 				default:
 					return model;
 			}
@@ -7408,17 +7431,31 @@ var $author$project$Main$handleInput = F2(
 	});
 var $author$project$Main$update = F2(
 	function (msg, model) {
-		if (msg.$ === 'Frame') {
-			var newModel = $author$project$Gravity$doGravity(
-				_Utils_update(
-					model,
-					{gravityFrames: model.gravityFrames + 1}));
-			return _Utils_Tuple2(newModel, $elm$core$Platform$Cmd$none);
-		} else {
-			var input = msg.a;
-			return _Utils_Tuple2(
-				A2($author$project$Main$handleInput, input.keyCode, model),
-				$elm$core$Platform$Cmd$none);
+		switch (msg.$) {
+			case 'Frame':
+				var newModel = $author$project$Gravity$doGravity(
+					_Utils_update(
+						model,
+						{gravityFrames: model.gravityFrames + 1}));
+				return _Utils_Tuple2(newModel, $elm$core$Platform$Cmd$none);
+			case 'KeyDown':
+				var input = msg.a;
+				return _Utils_Tuple2(
+					A2($author$project$Main$handleInput, input.keyCode, model),
+					$elm$core$Platform$Cmd$none);
+			default:
+				var input = msg.a;
+				var newModel = function () {
+					var _v1 = input.keyCode;
+					if (_v1.$ === 'Down') {
+						return _Utils_update(
+							model,
+							{softDropping: false});
+					} else {
+						return model;
+					}
+				}();
+				return _Utils_Tuple2(newModel, $elm$core$Platform$Cmd$none);
 		}
 	});
 var $author$project$Main$minoSize = 25;

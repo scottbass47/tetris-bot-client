@@ -54,7 +54,14 @@ doGravity state =
         Just tetromino ->
             let
                 gravityLevel =
-                    Array.get state.level gravityTable |> withDefault 0
+                    Array.get state.level
+                        (if state.softDropping then
+                            softDropTable
+
+                         else
+                            gravityTable
+                        )
+                        |> withDefault 0
 
                 updateGravityFrames : GameState -> GameState
                 updateGravityFrames s =

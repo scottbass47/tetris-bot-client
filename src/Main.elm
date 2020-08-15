@@ -25,7 +25,8 @@ type alias Model =
 
 type Msg
     = Frame Float
-    | HandleInput KeyboardEvent
+    | KeyDown KeyboardEvent
+    | KeyUp KeyboardEvent
 
 
 main : Program () Model Msg
@@ -70,8 +71,20 @@ update msg model =
             in
             ( newModel, Cmd.none )
 
-        HandleInput input ->
+        KeyDown input ->
             ( handleInput input.keyCode model, Cmd.none )
+
+        KeyUp input ->
+            let
+                newModel =
+                    case input.keyCode of
+                        Keys.Down ->
+                            { model | softDropping = False }
+
+                        _ ->
+                            model
+            in
+            ( newModel, Cmd.none )
 
 
 handleInput : Key -> Model -> Model
@@ -93,6 +106,9 @@ handleInput key model =
 
                 Keys.Up ->
                     doHardDrop model
+
+                Keys.Down ->
+                    doSoftDrop model
 
                 _ ->
                     model
@@ -149,11 +165,25 @@ doHardDrop model =
             f tetromino
 
 
+doSoftDrop : Model -> Model
+doSoftDrop model =
+    { model
+        | softDropping = True
+        , gravityFrames =
+            if not model.softDropping then
+                0
+
+            else
+                model.gravityFrames
+    }
+
+
 subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.batch
         [ onAnimationFrameDelta Frame
-        , onKeyDown (Json.map HandleInput decodeKeyboardEvent)
+        , onKeyDown (Json.map KeyDown decodeKeyboardEvent)
+        , onKeyUp (Json.map KeyUp decodeKeyboardEvent)
         ]
 
 

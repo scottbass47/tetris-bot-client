@@ -7,7 +7,7 @@ import Browser.Events exposing (onAnimationFrameDelta, onKeyDown, onKeyPress, on
 import Canvas exposing (Point, Renderable, rect, shapes)
 import Canvas.Settings exposing (fill)
 import Color exposing (Color)
-import GameState exposing (GameState, initialGameState)
+import GameState exposing (GameState, boardDims, initialGameState)
 import Gravity exposing (doGravity)
 import Html exposing (Html, div)
 import Html.Attributes exposing (style)
@@ -54,7 +54,7 @@ view model =
         , style "align-items" "center"
         ]
         [ Canvas.toHtml
-            ( round boardWidth, round boardHeight )
+            ( round (boardWidth model.board), round (boardHeight model.board) )
             []
             (renderGame model)
         ]
@@ -192,19 +192,28 @@ boardPosition =
     ( 0, 0 )
 
 
+boardRenderDims : Board -> GridPoint
+boardRenderDims board =
+    let
+        ( r, c ) =
+            Board.boardDims board
+    in
+    ( r - 2, c )
+
+
 minoSize : Float
 minoSize =
     25
 
 
-boardWidth : Float
-boardWidth =
-    GameState.boardDims |> Tuple.second |> toFloat |> (*) minoSize
+boardWidth : Board -> Float
+boardWidth board =
+    board |> boardRenderDims |> Tuple.second |> toFloat |> (*) minoSize
 
 
-boardHeight : Float
-boardHeight =
-    GameState.boardDims |> Tuple.first |> toFloat |> (*) minoSize
+boardHeight : Board -> Float
+boardHeight board =
+    board |> boardRenderDims |> Tuple.first |> toFloat |> (*) minoSize
 
 
 minoColor : Piece -> Color
@@ -235,8 +244,8 @@ minoColor mino =
             Color.rgb255 197 197 197
 
 
-minoPosition : GridPoint -> Point
-minoPosition ( r, c ) =
+minoPosition : Board -> GridPoint -> Point
+minoPosition board ( r, c ) =
     let
         offX =
             Tuple.first boardPosition
@@ -245,7 +254,7 @@ minoPosition ( r, c ) =
             Tuple.second boardPosition
 
         flipY y =
-            boardHeight - y - minoSize
+            boardHeight board - y - minoSize
     in
     ( c |> toFloat |> (*) minoSize |> (+) offX, r |> toFloat |> (*) minoSize |> (+) offY |> flipY )
 
@@ -259,26 +268,36 @@ renderGame model =
                     []
 
                 Just t ->
-                    renderTetromino t
+                    renderTetromino model t
     in
-    clearScreen :: renderBoard model ++ currTetrominoRender
+    clearScreen model :: renderBoard model ++ currTetrominoRender
 
 
-clearScreen : Renderable
-clearScreen =
-    shapes [ fill Color.black ] [ rect ( 0, 0 ) boardWidth boardHeight ]
+clearScreen : Model -> Renderable
+clearScreen model =
+    shapes [ fill Color.black ] [ rect ( 0, 0 ) (boardWidth model.board) (boardHeight model.board) ]
 
 
-renderTetromino : Tetromino -> List Renderable
-renderTetromino tetromino =
-    List.map (renderMino tetromino.piece) (minosPositions tetromino)
+renderTetromino : Model -> Tetromino -> List Renderable
+renderTetromino model tetromino =
+    List.map (renderMino model tetromino.piece) (minosPositions tetromino)
 
 
-renderMino : Piece -> GridPoint -> Renderable
-renderMino mino pos =
-    shapes [ fill (minoColor mino) ] [ rect (minoPosition pos) minoSize minoSize ]
+renderMino : Model -> Piece -> GridPoint -> Renderable
+renderMino model mino pos =
+    shapes [ fill (minoColor mino) ] [ rect (minoPosition model.board pos) minoSize minoSize ]
 
 
 renderBoard : Model -> List Renderable
-renderBoard { board } =
-    Array.indexedMap (\i mino -> renderMino mino (Board.fromArrIndex board i)) board.arr |> Array.toList
+renderBoard ({ board } as model) =
+    let
+        ( r, c ) =
+            boardRenderDims board
+
+        shouldRender ( rr, cc ) =
+            rr >= 0 && rr < r && cc >= 0 && cc < c
+    in
+    board.arr
+        |> Array.toIndexedList
+        |> List.filter (\( i, _ ) -> shouldRender (Board.fromArrIndex board i))
+        |> List.map (\( i, mino ) -> renderMino model mino (Board.fromArrIndex board i))

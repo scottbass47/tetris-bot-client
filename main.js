@@ -7458,9 +7458,22 @@ var $author$project$Main$update = F2(
 				return _Utils_Tuple2(newModel, $elm$core$Platform$Cmd$none);
 		}
 	});
+var $author$project$Board$boardDims = function (board) {
+	return _Utils_Tuple2(board.rows, board.cols);
+};
+var $author$project$Main$boardRenderDims = function (board) {
+	var _v0 = $author$project$Board$boardDims(board);
+	var r = _v0.a;
+	var c = _v0.b;
+	return _Utils_Tuple2(r - 2, c);
+};
 var $author$project$Main$minoSize = 25;
-var $author$project$Main$boardHeight = $author$project$Main$minoSize * $author$project$GameState$boardDims.a;
-var $author$project$Main$boardWidth = $author$project$Main$minoSize * $author$project$GameState$boardDims.b;
+var $author$project$Main$boardHeight = function (board) {
+	return $author$project$Main$minoSize * $author$project$Main$boardRenderDims(board).a;
+};
+var $author$project$Main$boardWidth = function (board) {
+	return $author$project$Main$minoSize * $author$project$Main$boardRenderDims(board).b;
+};
 var $elm$html$Html$div = _VirtualDom_node('div');
 var $avh4$elm_color$Color$RgbaSpace = F4(
 	function (a, b, c, d) {
@@ -7613,20 +7626,22 @@ var $joakin$elm_canvas$Canvas$shapes = F2(
 					drawable: $joakin$elm_canvas$Canvas$Internal$Canvas$DrawableShapes(ss)
 				}));
 	});
-var $author$project$Main$clearScreen = A2(
-	$joakin$elm_canvas$Canvas$shapes,
-	_List_fromArray(
-		[
-			$joakin$elm_canvas$Canvas$Settings$fill($avh4$elm_color$Color$black)
-		]),
-	_List_fromArray(
-		[
-			A3(
-			$joakin$elm_canvas$Canvas$rect,
-			_Utils_Tuple2(0, 0),
-			$author$project$Main$boardWidth,
-			$author$project$Main$boardHeight)
-		]));
+var $author$project$Main$clearScreen = function (model) {
+	return A2(
+		$joakin$elm_canvas$Canvas$shapes,
+		_List_fromArray(
+			[
+				$joakin$elm_canvas$Canvas$Settings$fill($avh4$elm_color$Color$black)
+			]),
+		_List_fromArray(
+			[
+				A3(
+				$joakin$elm_canvas$Canvas$rect,
+				_Utils_Tuple2(0, 0),
+				$author$project$Main$boardWidth(model.board),
+				$author$project$Main$boardHeight(model.board))
+			]));
+};
 var $avh4$elm_color$Color$scaleFrom255 = function (c) {
 	return c / 255;
 };
@@ -7660,20 +7675,21 @@ var $author$project$Main$minoColor = function (mino) {
 	}
 };
 var $author$project$Main$boardPosition = _Utils_Tuple2(0, 0);
-var $author$project$Main$minoPosition = function (_v0) {
-	var r = _v0.a;
-	var c = _v0.b;
-	var offY = $author$project$Main$boardPosition.b;
-	var offX = $author$project$Main$boardPosition.a;
-	var flipY = function (y) {
-		return ($author$project$Main$boardHeight - y) - $author$project$Main$minoSize;
-	};
-	return _Utils_Tuple2(
-		offX + ($author$project$Main$minoSize * c),
-		flipY(offY + ($author$project$Main$minoSize * r)));
-};
-var $author$project$Main$renderMino = F2(
-	function (mino, pos) {
+var $author$project$Main$minoPosition = F2(
+	function (board, _v0) {
+		var r = _v0.a;
+		var c = _v0.b;
+		var offY = $author$project$Main$boardPosition.b;
+		var offX = $author$project$Main$boardPosition.a;
+		var flipY = function (y) {
+			return ($author$project$Main$boardHeight(board) - y) - $author$project$Main$minoSize;
+		};
+		return _Utils_Tuple2(
+			offX + ($author$project$Main$minoSize * c),
+			flipY(offY + ($author$project$Main$minoSize * r)));
+	});
+var $author$project$Main$renderMino = F3(
+	function (model, mino, pos) {
 		return A2(
 			$joakin$elm_canvas$Canvas$shapes,
 			_List_fromArray(
@@ -7685,31 +7701,67 @@ var $author$project$Main$renderMino = F2(
 				[
 					A3(
 					$joakin$elm_canvas$Canvas$rect,
-					$author$project$Main$minoPosition(pos),
+					A2($author$project$Main$minoPosition, model.board, pos),
 					$author$project$Main$minoSize,
 					$author$project$Main$minoSize)
 				]));
 	});
-var $author$project$Main$renderBoard = function (_v0) {
-	var board = _v0.board;
-	return $elm$core$Array$toList(
-		A2(
-			$elm$core$Array$indexedMap,
-			F2(
-				function (i, mino) {
-					return A2(
-						$author$project$Main$renderMino,
-						mino,
-						A2($author$project$Board$fromArrIndex, board, i));
-				}),
-			board.arr));
+var $elm$core$Array$toIndexedList = function (array) {
+	var len = array.a;
+	var helper = F2(
+		function (entry, _v0) {
+			var index = _v0.a;
+			var list = _v0.b;
+			return _Utils_Tuple2(
+				index - 1,
+				A2(
+					$elm$core$List$cons,
+					_Utils_Tuple2(index, entry),
+					list));
+		});
+	return A3(
+		$elm$core$Array$foldr,
+		helper,
+		_Utils_Tuple2(len - 1, _List_Nil),
+		array).b;
 };
-var $author$project$Main$renderTetromino = function (tetromino) {
+var $author$project$Main$renderBoard = function (model) {
+	var board = model.board;
+	var _v0 = $author$project$Main$boardRenderDims(board);
+	var r = _v0.a;
+	var c = _v0.b;
+	var shouldRender = function (_v3) {
+		var rr = _v3.a;
+		var cc = _v3.b;
+		return (rr >= 0) && ((_Utils_cmp(rr, r) < 0) && ((cc >= 0) && (_Utils_cmp(cc, c) < 0)));
+	};
 	return A2(
 		$elm$core$List$map,
-		$author$project$Main$renderMino(tetromino.piece),
-		$author$project$Tetromino$minosPositions(tetromino));
+		function (_v2) {
+			var i = _v2.a;
+			var mino = _v2.b;
+			return A3(
+				$author$project$Main$renderMino,
+				model,
+				mino,
+				A2($author$project$Board$fromArrIndex, board, i));
+		},
+		A2(
+			$elm$core$List$filter,
+			function (_v1) {
+				var i = _v1.a;
+				return shouldRender(
+					A2($author$project$Board$fromArrIndex, board, i));
+			},
+			$elm$core$Array$toIndexedList(board.arr)));
 };
+var $author$project$Main$renderTetromino = F2(
+	function (model, tetromino) {
+		return A2(
+			$elm$core$List$map,
+			A2($author$project$Main$renderMino, model, tetromino.piece),
+			$author$project$Tetromino$minosPositions(tetromino));
+	});
 var $author$project$Main$renderGame = function (model) {
 	var currTetrominoRender = function () {
 		var _v0 = model.currTetromino;
@@ -7717,12 +7769,12 @@ var $author$project$Main$renderGame = function (model) {
 			return _List_Nil;
 		} else {
 			var t = _v0.a;
-			return $author$project$Main$renderTetromino(t);
+			return A2($author$project$Main$renderTetromino, model, t);
 		}
 	}();
 	return A2(
 		$elm$core$List$cons,
-		$author$project$Main$clearScreen,
+		$author$project$Main$clearScreen(model),
 		_Utils_ap(
 			$author$project$Main$renderBoard(model),
 			currTetrominoRender));
@@ -8488,8 +8540,10 @@ var $author$project$Main$view = function (model) {
 				A3(
 				$joakin$elm_canvas$Canvas$toHtml,
 				_Utils_Tuple2(
-					$elm$core$Basics$round($author$project$Main$boardWidth),
-					$elm$core$Basics$round($author$project$Main$boardHeight)),
+					$elm$core$Basics$round(
+						$author$project$Main$boardWidth(model.board)),
+					$elm$core$Basics$round(
+						$author$project$Main$boardHeight(model.board))),
 				_List_Nil,
 				$author$project$Main$renderGame(model))
 			]));

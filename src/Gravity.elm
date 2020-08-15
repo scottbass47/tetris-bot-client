@@ -5,6 +5,7 @@ import Board exposing (Board)
 import GameState exposing (GameState, spawnTetromino)
 import Maybe exposing (withDefault)
 import SRS exposing (tryMove)
+import Types exposing (Msg)
 
 
 type alias GravityTable =
@@ -45,11 +46,11 @@ softDropTable =
         ]
 
 
-doGravity : GameState -> GameState
+doGravity : GameState -> ( GameState, Cmd Msg )
 doGravity state =
     case state.currTetromino of
         Nothing ->
-            state
+            ( state, Cmd.none )
 
         Just tetromino ->
             let
@@ -66,20 +67,22 @@ doGravity state =
                 updateGravityFrames : GameState -> GameState
                 updateGravityFrames s =
                     { s | gravityFrames = s.gravityFrames - gravityLevel }
+
+                doGravityHelper : Cmd Msg -> GameState -> ( GameState, Cmd Msg )
+                doGravityHelper cmd st =
+                    if st.gravityFrames >= gravityLevel then
+                        case tryMove st.board tetromino ( 0, -1 ) of
+                            (Just _) as t ->
+                                { st | currTetromino = t }
+                                    |> updateGravityFrames
+                                    |> doGravityHelper cmd
+
+                            Nothing ->
+                                { st | board = Board.placeTetromino tetromino st.board, currTetromino = Nothing }
+                                    |> updateGravityFrames
+                                    |> (\s -> ( s, GameState.spawnTetromino s ))
+
+                    else
+                        ( st, cmd )
             in
-            if state.gravityFrames >= gravityLevel then
-                case tryMove state.board tetromino ( 0, -1 ) of
-                    (Just _) as t ->
-                        { state | currTetromino = t }
-                            |> updateGravityFrames
-                            |> doGravity
-
-                    Nothing ->
-                        { state
-                            | board = Board.placeTetromino tetromino state.board
-                            , currTetromino = Just (spawnTetromino ())
-                        }
-                            |> updateGravityFrames
-
-            else
-                state
+            doGravityHelper Cmd.none state

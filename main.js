@@ -4392,6 +4392,52 @@ var _Bitwise_shiftRightZfBy = F2(function(offset, a)
 {
 	return a >>> offset;
 });
+
+
+
+function _Time_now(millisToPosix)
+{
+	return _Scheduler_binding(function(callback)
+	{
+		callback(_Scheduler_succeed(millisToPosix(Date.now())));
+	});
+}
+
+var _Time_setInterval = F2(function(interval, task)
+{
+	return _Scheduler_binding(function(callback)
+	{
+		var id = setInterval(function() { _Scheduler_rawSpawn(task); }, interval);
+		return function() { clearInterval(id); };
+	});
+});
+
+function _Time_here()
+{
+	return _Scheduler_binding(function(callback)
+	{
+		callback(_Scheduler_succeed(
+			A2($elm$time$Time$customZone, -(new Date().getTimezoneOffset()), _List_Nil)
+		));
+	});
+}
+
+
+function _Time_getZoneName()
+{
+	return _Scheduler_binding(function(callback)
+	{
+		try
+		{
+			var name = $elm$time$Time$Name(Intl.DateTimeFormat().resolvedOptions().timeZone);
+		}
+		catch (e)
+		{
+			var name = $elm$time$Time$Offset(new Date().getTimezoneOffset());
+		}
+		callback(_Scheduler_succeed(name));
+	});
+}
 var $elm$core$Basics$EQ = {$: 'EQ'};
 var $elm$core$Basics$GT = {$: 'GT'};
 var $elm$core$Basics$LT = {$: 'LT'};
@@ -5182,7 +5228,16 @@ var $elm$core$Task$perform = F2(
 	});
 var $elm$browser$Browser$element = _Browser_element;
 var $author$project$GameState$boardDims = _Utils_Tuple2(22, 10);
-var $author$project$Tetromino$Blank = {$: 'Blank'};
+var $author$project$Types$I = {$: 'I'};
+var $author$project$Types$J = {$: 'J'};
+var $author$project$Types$L = {$: 'L'};
+var $author$project$Types$O = {$: 'O'};
+var $author$project$Types$S = {$: 'S'};
+var $author$project$Types$T = {$: 'T'};
+var $author$project$Types$Z = {$: 'Z'};
+var $author$project$PieceGen$fullBag = _List_fromArray(
+	[$author$project$Types$I, $author$project$Types$J, $author$project$Types$L, $author$project$Types$T, $author$project$Types$S, $author$project$Types$Z, $author$project$Types$O]);
+var $author$project$Types$Blank = {$: 'Blank'};
 var $elm$core$Array$repeat = F2(
 	function (n, e) {
 		return A2(
@@ -5196,260 +5251,271 @@ var $author$project$Board$initBoard = function (_v0) {
 	var rows = _v0.a;
 	var cols = _v0.b;
 	return {
-		arr: A2($elm$core$Array$repeat, rows * cols, $author$project$Tetromino$Blank),
+		arr: A2($elm$core$Array$repeat, rows * cols, $author$project$Types$Blank),
 		cols: cols,
 		rows: rows
 	};
 };
-var $author$project$Tetromino$T = {$: 'T'};
-var $author$project$Tetromino$Tetromino = F5(
-	function (piece, orientation, pos, localPos, offsets) {
-		return {localPos: localPos, offsets: offsets, orientation: orientation, piece: piece, pos: pos};
-	});
-var $author$project$Tetromino$Zero = {$: 'Zero'};
-var $elm$core$Basics$negate = function (n) {
-	return -n;
-};
-var $author$project$Tetromino$initialPositions = function (piece) {
-	switch (piece.$) {
-		case 'I':
-			return _List_fromArray(
-				[
-					_Utils_Tuple2(-1, 0),
-					_Utils_Tuple2(0, 0),
-					_Utils_Tuple2(1, 0),
-					_Utils_Tuple2(2, 0)
-				]);
-		case 'J':
-			return _List_fromArray(
-				[
-					_Utils_Tuple2(-1, 1),
-					_Utils_Tuple2(-1, 0),
-					_Utils_Tuple2(0, 0),
-					_Utils_Tuple2(1, 0)
-				]);
-		case 'L':
-			return _List_fromArray(
-				[
-					_Utils_Tuple2(-1, 0),
-					_Utils_Tuple2(0, 0),
-					_Utils_Tuple2(1, 0),
-					_Utils_Tuple2(1, 1)
-				]);
-		case 'T':
-			return _List_fromArray(
-				[
-					_Utils_Tuple2(-1, 0),
-					_Utils_Tuple2(0, 0),
-					_Utils_Tuple2(1, 0),
-					_Utils_Tuple2(0, 1)
-				]);
-		case 'S':
-			return _List_fromArray(
-				[
-					_Utils_Tuple2(-1, 0),
-					_Utils_Tuple2(0, 0),
-					_Utils_Tuple2(0, 1),
-					_Utils_Tuple2(1, 1)
-				]);
-		case 'Z':
-			return _List_fromArray(
-				[
-					_Utils_Tuple2(-1, 1),
-					_Utils_Tuple2(0, 1),
-					_Utils_Tuple2(0, 0),
-					_Utils_Tuple2(1, 0)
-				]);
-		case 'O':
-			return _List_fromArray(
-				[
-					_Utils_Tuple2(0, 0),
-					_Utils_Tuple2(1, 0),
-					_Utils_Tuple2(0, 1),
-					_Utils_Tuple2(1, 1)
-				]);
-		default:
-			return _List_Nil;
-	}
-};
-var $author$project$Tetromino$Left = {$: 'Left'};
-var $author$project$Tetromino$Right = {$: 'Right'};
-var $author$project$Tetromino$Two = {$: 'Two'};
-var $author$project$Tetromino$pieceOffsets = function (piece) {
-	switch (piece.$) {
-		case 'I':
-			return _List_fromArray(
-				[
-					_Utils_Tuple2(
-					$author$project$Tetromino$Zero,
-					_List_fromArray(
-						[
-							_Utils_Tuple2(0, 0),
-							_Utils_Tuple2(-1, 0),
-							_Utils_Tuple2(2, 0),
-							_Utils_Tuple2(-1, 0),
-							_Utils_Tuple2(2, 0)
-						])),
-					_Utils_Tuple2(
-					$author$project$Tetromino$Right,
-					_List_fromArray(
-						[
-							_Utils_Tuple2(-1, 0),
-							_Utils_Tuple2(0, 0),
-							_Utils_Tuple2(0, 0),
-							_Utils_Tuple2(0, 1),
-							_Utils_Tuple2(0, -2)
-						])),
-					_Utils_Tuple2(
-					$author$project$Tetromino$Two,
-					_List_fromArray(
-						[
-							_Utils_Tuple2(-1, 1),
-							_Utils_Tuple2(1, 1),
-							_Utils_Tuple2(-2, 1),
-							_Utils_Tuple2(1, 0),
-							_Utils_Tuple2(-2, 0)
-						])),
-					_Utils_Tuple2(
-					$author$project$Tetromino$Left,
-					_List_fromArray(
-						[
-							_Utils_Tuple2(0, 1),
-							_Utils_Tuple2(0, 1),
-							_Utils_Tuple2(0, 1),
-							_Utils_Tuple2(0, -1),
-							_Utils_Tuple2(0, 2)
-						]))
-				]);
-		case 'O':
-			return _List_fromArray(
-				[
-					_Utils_Tuple2(
-					$author$project$Tetromino$Zero,
-					_List_fromArray(
-						[
-							_Utils_Tuple2(0, 0)
-						])),
-					_Utils_Tuple2(
-					$author$project$Tetromino$Right,
-					_List_fromArray(
-						[
-							_Utils_Tuple2(0, -1)
-						])),
-					_Utils_Tuple2(
-					$author$project$Tetromino$Two,
-					_List_fromArray(
-						[
-							_Utils_Tuple2(-1, -1)
-						])),
-					_Utils_Tuple2(
-					$author$project$Tetromino$Left,
-					_List_fromArray(
-						[
-							_Utils_Tuple2(-1, 0)
-						]))
-				]);
-		default:
-			return _List_fromArray(
-				[
-					_Utils_Tuple2(
-					$author$project$Tetromino$Zero,
-					_List_fromArray(
-						[
-							_Utils_Tuple2(0, 0),
-							_Utils_Tuple2(0, 0),
-							_Utils_Tuple2(0, 0),
-							_Utils_Tuple2(0, 0),
-							_Utils_Tuple2(0, 0)
-						])),
-					_Utils_Tuple2(
-					$author$project$Tetromino$Right,
-					_List_fromArray(
-						[
-							_Utils_Tuple2(0, 0),
-							_Utils_Tuple2(1, 0),
-							_Utils_Tuple2(1, -1),
-							_Utils_Tuple2(0, 2),
-							_Utils_Tuple2(1, 2)
-						])),
-					_Utils_Tuple2(
-					$author$project$Tetromino$Two,
-					_List_fromArray(
-						[
-							_Utils_Tuple2(0, 0),
-							_Utils_Tuple2(0, 0),
-							_Utils_Tuple2(0, 0),
-							_Utils_Tuple2(0, 0),
-							_Utils_Tuple2(0, 0)
-						])),
-					_Utils_Tuple2(
-					$author$project$Tetromino$Left,
-					_List_fromArray(
-						[
-							_Utils_Tuple2(0, 0),
-							_Utils_Tuple2(-1, 0),
-							_Utils_Tuple2(-1, -1),
-							_Utils_Tuple2(0, 2),
-							_Utils_Tuple2(-1, 2)
-						]))
-				]);
-	}
-};
-var $author$project$Tetromino$mkTetromino = function (piece) {
-	var positions = $author$project$Tetromino$initialPositions(piece);
-	var offsets = $author$project$Tetromino$pieceOffsets(piece);
-	return A5(
-		$author$project$Tetromino$Tetromino,
-		piece,
-		$author$project$Tetromino$Zero,
-		_Utils_Tuple2(0, 0),
-		positions,
-		offsets);
-};
-var $elm$core$Tuple$second = function (_v0) {
-	var y = _v0.b;
-	return y;
-};
-var $author$project$Tetromino$moveTetromino = F2(
-	function (_v0, t) {
-		var x = _v0.a;
-		var y = _v0.b;
-		return _Utils_update(
-			t,
-			{
-				pos: _Utils_Tuple2(x + t.pos.a, y + t.pos.b)
-			});
-	});
-var $author$project$GameState$spawnTetromino = function (_v0) {
-	return A2(
-		$author$project$Tetromino$moveTetromino,
-		_Utils_Tuple2(5, 17),
-		$author$project$Tetromino$mkTetromino($author$project$Tetromino$T));
-};
 var $author$project$GameState$initialGameState = function (_v0) {
 	return {
 		board: $author$project$Board$initBoard($author$project$GameState$boardDims),
-		currTetromino: $elm$core$Maybe$Just(
-			$author$project$GameState$spawnTetromino(_Utils_Tuple0)),
+		currTetromino: $elm$core$Maybe$Nothing,
 		gravityFrames: 0,
 		level: 0,
+		pieceBag: $author$project$PieceGen$fullBag,
 		softDropping: false
 	};
 };
-var $elm$core$Platform$Cmd$batch = _Platform_batch;
-var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
-var $author$project$Main$init = function (_v0) {
-	return _Utils_Tuple2(
-		$author$project$GameState$initialGameState(_Utils_Tuple0),
-		$elm$core$Platform$Cmd$none);
+var $author$project$Types$NextPiece = function (a) {
+	return {$: 'NextPiece', a: a};
 };
-var $author$project$Main$Frame = function (a) {
+var $elm$random$Random$Generate = function (a) {
+	return {$: 'Generate', a: a};
+};
+var $elm$random$Random$Seed = F2(
+	function (a, b) {
+		return {$: 'Seed', a: a, b: b};
+	});
+var $elm$core$Bitwise$shiftRightZfBy = _Bitwise_shiftRightZfBy;
+var $elm$random$Random$next = function (_v0) {
+	var state0 = _v0.a;
+	var incr = _v0.b;
+	return A2($elm$random$Random$Seed, ((state0 * 1664525) + incr) >>> 0, incr);
+};
+var $elm$random$Random$initialSeed = function (x) {
+	var _v0 = $elm$random$Random$next(
+		A2($elm$random$Random$Seed, 0, 1013904223));
+	var state1 = _v0.a;
+	var incr = _v0.b;
+	var state2 = (state1 + x) >>> 0;
+	return $elm$random$Random$next(
+		A2($elm$random$Random$Seed, state2, incr));
+};
+var $elm$time$Time$Name = function (a) {
+	return {$: 'Name', a: a};
+};
+var $elm$time$Time$Offset = function (a) {
+	return {$: 'Offset', a: a};
+};
+var $elm$time$Time$Zone = F2(
+	function (a, b) {
+		return {$: 'Zone', a: a, b: b};
+	});
+var $elm$time$Time$customZone = $elm$time$Time$Zone;
+var $elm$time$Time$Posix = function (a) {
+	return {$: 'Posix', a: a};
+};
+var $elm$time$Time$millisToPosix = $elm$time$Time$Posix;
+var $elm$time$Time$now = _Time_now($elm$time$Time$millisToPosix);
+var $elm$time$Time$posixToMillis = function (_v0) {
+	var millis = _v0.a;
+	return millis;
+};
+var $elm$random$Random$init = A2(
+	$elm$core$Task$andThen,
+	function (time) {
+		return $elm$core$Task$succeed(
+			$elm$random$Random$initialSeed(
+				$elm$time$Time$posixToMillis(time)));
+	},
+	$elm$time$Time$now);
+var $elm$random$Random$step = F2(
+	function (_v0, seed) {
+		var generator = _v0.a;
+		return generator(seed);
+	});
+var $elm$random$Random$onEffects = F3(
+	function (router, commands, seed) {
+		if (!commands.b) {
+			return $elm$core$Task$succeed(seed);
+		} else {
+			var generator = commands.a.a;
+			var rest = commands.b;
+			var _v1 = A2($elm$random$Random$step, generator, seed);
+			var value = _v1.a;
+			var newSeed = _v1.b;
+			return A2(
+				$elm$core$Task$andThen,
+				function (_v2) {
+					return A3($elm$random$Random$onEffects, router, rest, newSeed);
+				},
+				A2($elm$core$Platform$sendToApp, router, value));
+		}
+	});
+var $elm$random$Random$onSelfMsg = F3(
+	function (_v0, _v1, seed) {
+		return $elm$core$Task$succeed(seed);
+	});
+var $elm$random$Random$Generator = function (a) {
+	return {$: 'Generator', a: a};
+};
+var $elm$random$Random$map = F2(
+	function (func, _v0) {
+		var genA = _v0.a;
+		return $elm$random$Random$Generator(
+			function (seed0) {
+				var _v1 = genA(seed0);
+				var a = _v1.a;
+				var seed1 = _v1.b;
+				return _Utils_Tuple2(
+					func(a),
+					seed1);
+			});
+	});
+var $elm$random$Random$cmdMap = F2(
+	function (func, _v0) {
+		var generator = _v0.a;
+		return $elm$random$Random$Generate(
+			A2($elm$random$Random$map, func, generator));
+	});
+_Platform_effectManagers['Random'] = _Platform_createManager($elm$random$Random$init, $elm$random$Random$onEffects, $elm$random$Random$onSelfMsg, $elm$random$Random$cmdMap);
+var $elm$random$Random$command = _Platform_leaf('Random');
+var $elm$random$Random$generate = F2(
+	function (tagger, generator) {
+		return $elm$random$Random$command(
+			$elm$random$Random$Generate(
+				A2($elm$random$Random$map, tagger, generator)));
+	});
+var $elm$core$List$head = function (list) {
+	if (list.b) {
+		var x = list.a;
+		var xs = list.b;
+		return $elm$core$Maybe$Just(x);
+	} else {
+		return $elm$core$Maybe$Nothing;
+	}
+};
+var $elm$core$List$tail = function (list) {
+	if (list.b) {
+		var x = list.a;
+		var xs = list.b;
+		return $elm$core$Maybe$Just(xs);
+	} else {
+		return $elm$core$Maybe$Nothing;
+	}
+};
+var $elm$random$Random$addOne = function (value) {
+	return _Utils_Tuple2(1, value);
+};
+var $elm$core$Basics$negate = function (n) {
+	return -n;
+};
+var $elm$core$Basics$abs = function (n) {
+	return (n < 0) ? (-n) : n;
+};
+var $elm$core$Bitwise$and = _Bitwise_and;
+var $elm$core$Bitwise$xor = _Bitwise_xor;
+var $elm$random$Random$peel = function (_v0) {
+	var state = _v0.a;
+	var word = (state ^ (state >>> ((state >>> 28) + 4))) * 277803737;
+	return ((word >>> 22) ^ word) >>> 0;
+};
+var $elm$random$Random$float = F2(
+	function (a, b) {
+		return $elm$random$Random$Generator(
+			function (seed0) {
+				var seed1 = $elm$random$Random$next(seed0);
+				var range = $elm$core$Basics$abs(b - a);
+				var n1 = $elm$random$Random$peel(seed1);
+				var n0 = $elm$random$Random$peel(seed0);
+				var lo = (134217727 & n1) * 1.0;
+				var hi = (67108863 & n0) * 1.0;
+				var val = ((hi * 134217728.0) + lo) / 9007199254740992.0;
+				var scaled = (val * range) + a;
+				return _Utils_Tuple2(
+					scaled,
+					$elm$random$Random$next(seed1));
+			});
+	});
+var $elm$random$Random$getByWeight = F3(
+	function (_v0, others, countdown) {
+		getByWeight:
+		while (true) {
+			var weight = _v0.a;
+			var value = _v0.b;
+			if (!others.b) {
+				return value;
+			} else {
+				var second = others.a;
+				var otherOthers = others.b;
+				if (_Utils_cmp(
+					countdown,
+					$elm$core$Basics$abs(weight)) < 1) {
+					return value;
+				} else {
+					var $temp$_v0 = second,
+						$temp$others = otherOthers,
+						$temp$countdown = countdown - $elm$core$Basics$abs(weight);
+					_v0 = $temp$_v0;
+					others = $temp$others;
+					countdown = $temp$countdown;
+					continue getByWeight;
+				}
+			}
+		}
+	});
+var $elm$core$List$sum = function (numbers) {
+	return A3($elm$core$List$foldl, $elm$core$Basics$add, 0, numbers);
+};
+var $elm$random$Random$weighted = F2(
+	function (first, others) {
+		var normalize = function (_v0) {
+			var weight = _v0.a;
+			return $elm$core$Basics$abs(weight);
+		};
+		var total = normalize(first) + $elm$core$List$sum(
+			A2($elm$core$List$map, normalize, others));
+		return A2(
+			$elm$random$Random$map,
+			A2($elm$random$Random$getByWeight, first, others),
+			A2($elm$random$Random$float, 0, total));
+	});
+var $elm$random$Random$uniform = F2(
+	function (value, valueList) {
+		return A2(
+			$elm$random$Random$weighted,
+			$elm$random$Random$addOne(value),
+			A2($elm$core$List$map, $elm$random$Random$addOne, valueList));
+	});
+var $elm$core$Maybe$withDefault = F2(
+	function (_default, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return value;
+		} else {
+			return _default;
+		}
+	});
+var $author$project$PieceGen$pieceGenerator = function (bag) {
+	var tl = A2(
+		$elm$core$Maybe$withDefault,
+		_List_Nil,
+		$elm$core$List$tail(bag));
+	var hd = A2(
+		$elm$core$Maybe$withDefault,
+		$author$project$Types$Blank,
+		$elm$core$List$head(bag));
+	return A2($elm$random$Random$uniform, hd, tl);
+};
+var $author$project$GameState$spawnTetromino = function (state) {
+	return A2(
+		$elm$random$Random$generate,
+		$author$project$Types$NextPiece,
+		$author$project$PieceGen$pieceGenerator(state.pieceBag));
+};
+var $author$project$Main$init = function (_v0) {
+	var model = $author$project$GameState$initialGameState(_Utils_Tuple0);
+	return _Utils_Tuple2(
+		model,
+		$author$project$GameState$spawnTetromino(model));
+};
+var $author$project$Types$Frame = function (a) {
 	return {$: 'Frame', a: a};
 };
-var $author$project$Main$KeyDown = function (a) {
+var $author$project$Types$KeyDown = function (a) {
 	return {$: 'KeyDown', a: a};
 };
-var $author$project$Main$KeyUp = function (a) {
+var $author$project$Types$KeyUp = function (a) {
 	return {$: 'KeyUp', a: a};
 };
 var $elm$core$Platform$Sub$batch = _Platform_batch;
@@ -5846,10 +5912,6 @@ var $elm$browser$Browser$AnimationManager$onEffects = F3(
 			}
 		}
 	});
-var $elm$time$Time$Posix = function (a) {
-	return {$: 'Posix', a: a};
-};
-var $elm$time$Time$millisToPosix = $elm$time$Time$Posix;
 var $elm$browser$Browser$AnimationManager$onSelfMsg = F3(
 	function (router, newTime, _v0) {
 		var subs = _v0.subs;
@@ -6323,16 +6385,14 @@ var $author$project$Main$subscriptions = function (_v0) {
 	return $elm$core$Platform$Sub$batch(
 		_List_fromArray(
 			[
-				$elm$browser$Browser$Events$onAnimationFrameDelta($author$project$Main$Frame),
+				$elm$browser$Browser$Events$onAnimationFrameDelta($author$project$Types$Frame),
 				$elm$browser$Browser$Events$onKeyDown(
-				A2($elm$json$Json$Decode$map, $author$project$Main$KeyDown, $Gizra$elm_keyboard_event$Keyboard$Event$decodeKeyboardEvent)),
+				A2($elm$json$Json$Decode$map, $author$project$Types$KeyDown, $Gizra$elm_keyboard_event$Keyboard$Event$decodeKeyboardEvent)),
 				$elm$browser$Browser$Events$onKeyUp(
-				A2($elm$json$Json$Decode$map, $author$project$Main$KeyUp, $Gizra$elm_keyboard_event$Keyboard$Event$decodeKeyboardEvent))
+				A2($elm$json$Json$Decode$map, $author$project$Types$KeyUp, $Gizra$elm_keyboard_event$Keyboard$Event$decodeKeyboardEvent))
 			]));
 };
 var $elm$core$Basics$ge = _Utils_ge;
-var $elm$core$Bitwise$and = _Bitwise_and;
-var $elm$core$Bitwise$shiftRightZfBy = _Bitwise_shiftRightZfBy;
 var $elm$core$Array$bitMask = 4294967295 >>> (32 - $elm$core$Array$shiftStep);
 var $elm$core$Elm$JsArray$unsafeGet = _JsArray_unsafeGet;
 var $elm$core$Array$getHelp = F3(
@@ -6410,6 +6470,8 @@ var $elm$core$Array$fromList = function (list) {
 var $author$project$Gravity$gravityTable = $elm$core$Array$fromList(
 	_List_fromArray(
 		[60, 50, 40, 30, 20, 10, 8, 6, 4, 2, 1]));
+var $elm$core$Platform$Cmd$batch = _Platform_batch;
+var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
 var $elm$core$Elm$JsArray$appendN = _JsArray_appendN;
 var $elm$core$Elm$JsArray$slice = _JsArray_slice;
 var $elm$core$Array$appendHelpBuilder = F2(
@@ -6697,10 +6759,14 @@ var $elm$core$List$member = F2(
 			xs);
 	});
 var $elm$core$Basics$not = _Basics_not;
+var $elm$core$Tuple$second = function (_v0) {
+	var y = _v0.b;
+	return y;
+};
 var $author$project$Board$clearRows = F2(
 	function (toClear, board) {
 		var numRowsToClear = $elm$core$List$length(toClear);
-		var newRows = A2($elm$core$Array$repeat, numRowsToClear * board.cols, $author$project$Tetromino$Blank);
+		var newRows = A2($elm$core$Array$repeat, numRowsToClear * board.cols, $author$project$Types$Blank);
 		var newArr = A2(
 			$elm$core$Array$map,
 			$elm$core$Tuple$second,
@@ -7031,7 +7097,7 @@ var $author$project$Board$placeTetromino = F2(
 						var filteredRow = A2(
 							$elm$core$Array$filter,
 							function (m) {
-								return _Utils_eq(m, $author$project$Tetromino$Blank);
+								return _Utils_eq(m, $author$project$Types$Blank);
 							},
 							currentRow);
 						if (!$elm$core$Array$length(filteredRow)) {
@@ -7085,20 +7151,11 @@ var $author$project$Board$inBounds = F2(
 		var c = _v0.b;
 		return (r >= 0) && ((_Utils_cmp(r, board.rows) < 0) && ((c >= 0) && (_Utils_cmp(c, board.cols) < 0)));
 	});
-var $elm$core$Maybe$withDefault = F2(
-	function (_default, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return value;
-		} else {
-			return _default;
-		}
-	});
 var $author$project$Board$minoAt = F2(
 	function (board, pos) {
 		return A2(
 			$elm$core$Maybe$withDefault,
-			$author$project$Tetromino$Blank,
+			$author$project$Types$Blank,
 			A2(
 				$elm$core$Array$get,
 				A2($author$project$Board$toArrIndex, board, pos),
@@ -7112,9 +7169,19 @@ var $author$project$Board$canPlace = F2(
 			function (mino) {
 				return A2($author$project$Board$inBounds, board, mino) && _Utils_eq(
 					A2($author$project$Board$minoAt, board, mino),
-					$author$project$Tetromino$Blank);
+					$author$project$Types$Blank);
 			},
 			minos);
+	});
+var $author$project$Tetromino$moveTetromino = F2(
+	function (_v0, t) {
+		var x = _v0.a;
+		var y = _v0.b;
+		return _Utils_update(
+			t,
+			{
+				pos: _Utils_Tuple2(x + t.pos.a, y + t.pos.b)
+			});
 	});
 var $author$project$SRS$tryMove = F3(
 	function (board, tetromino, delta) {
@@ -7124,7 +7191,7 @@ var $author$project$SRS$tryMove = F3(
 var $author$project$Gravity$doGravity = function (state) {
 	var _v0 = state.currTetromino;
 	if (_v0.$ === 'Nothing') {
-		return state;
+		return _Utils_Tuple2(state, $elm$core$Platform$Cmd$none);
 	} else {
 		var tetromino = _v0.a;
 		var gravityLevel = A2(
@@ -7139,34 +7206,55 @@ var $author$project$Gravity$doGravity = function (state) {
 				s,
 				{gravityFrames: s.gravityFrames - gravityLevel});
 		};
-		if (_Utils_cmp(state.gravityFrames, gravityLevel) > -1) {
-			var _v1 = A3(
-				$author$project$SRS$tryMove,
-				state.board,
-				tetromino,
-				_Utils_Tuple2(0, -1));
-			if (_v1.$ === 'Just') {
-				var t = _v1;
-				return $author$project$Gravity$doGravity(
-					updateGravityFrames(
-						_Utils_update(
-							state,
-							{currTetromino: t})));
-			} else {
-				return updateGravityFrames(
-					_Utils_update(
-						state,
-						{
-							board: A2($author$project$Board$placeTetromino, tetromino, state.board),
-							currTetromino: $elm$core$Maybe$Just(
-								$author$project$GameState$spawnTetromino(_Utils_Tuple0))
-						}));
-			}
-		} else {
-			return state;
-		}
+		var doGravityHelper = F2(
+			function (cmd, st) {
+				if (_Utils_cmp(st.gravityFrames, gravityLevel) > -1) {
+					var _v1 = A3(
+						$author$project$SRS$tryMove,
+						st.board,
+						tetromino,
+						_Utils_Tuple2(0, -1));
+					if (_v1.$ === 'Just') {
+						var t = _v1;
+						return A2(
+							doGravityHelper,
+							cmd,
+							updateGravityFrames(
+								_Utils_update(
+									st,
+									{currTetromino: t})));
+					} else {
+						return function (s) {
+							return _Utils_Tuple2(
+								s,
+								$author$project$GameState$spawnTetromino(s));
+						}(
+							updateGravityFrames(
+								_Utils_update(
+									st,
+									{
+										board: A2($author$project$Board$placeTetromino, tetromino, st.board),
+										currTetromino: $elm$core$Maybe$Nothing
+									})));
+					}
+				} else {
+					return _Utils_Tuple2(st, cmd);
+				}
+			});
+		return A2(doGravityHelper, $elm$core$Platform$Cmd$none, state);
 	}
 };
+var $elm$core$List$filter = F2(
+	function (isGood, list) {
+		return A3(
+			$elm$core$List$foldr,
+			F2(
+				function (x, xs) {
+					return isGood(x) ? A2($elm$core$List$cons, x, xs) : xs;
+				}),
+			_List_Nil,
+			list);
+	});
 var $author$project$Types$CCW = {$: 'CCW'};
 var $author$project$Types$CW = {$: 'CW'};
 var $author$project$Main$doHardDrop = function (model) {
@@ -7228,31 +7316,12 @@ var $author$project$Main$movePiece = F2(
 			}
 		}
 	});
-var $elm$core$List$filter = F2(
-	function (isGood, list) {
-		return A3(
-			$elm$core$List$foldr,
-			F2(
-				function (x, xs) {
-					return isGood(x) ? A2($elm$core$List$cons, x, xs) : xs;
-				}),
-			_List_Nil,
-			list);
-	});
-var $elm$core$List$head = function (list) {
-	if (list.b) {
-		var x = list.a;
-		var xs = list.b;
-		return $elm$core$Maybe$Just(x);
-	} else {
-		return $elm$core$Maybe$Nothing;
-	}
-};
+var $author$project$Types$Zero = {$: 'Zero'};
 var $author$project$Tetromino$getOffset = F2(
 	function (orientation, t) {
 		return A2(
 			$elm$core$Maybe$withDefault,
-			_Utils_Tuple2($author$project$Tetromino$Zero, _List_Nil),
+			_Utils_Tuple2($author$project$Types$Zero, _List_Nil),
 			$elm$core$List$head(
 				A2(
 					$elm$core$List$filter,
@@ -7281,6 +7350,9 @@ var $author$project$SRS$getOffsets = F2(
 			fromOffsets,
 			toOffsets);
 	});
+var $author$project$Types$Left = {$: 'Left'};
+var $author$project$Types$Right = {$: 'Right'};
+var $author$project$Types$Two = {$: 'Two'};
 var $author$project$Tetromino$rotateTetromino = F2(
 	function (o, tetromino) {
 		return _Utils_update(
@@ -7292,13 +7364,13 @@ var $author$project$Tetromino$rotateCCW = function (tetromino) {
 		var _v0 = tetromino.orientation;
 		switch (_v0.$) {
 			case 'Zero':
-				return $author$project$Tetromino$Left;
+				return $author$project$Types$Left;
 			case 'Left':
-				return $author$project$Tetromino$Two;
+				return $author$project$Types$Two;
 			case 'Two':
-				return $author$project$Tetromino$Right;
+				return $author$project$Types$Right;
 			default:
-				return $author$project$Tetromino$Zero;
+				return $author$project$Types$Zero;
 		}
 	}();
 	return A2($author$project$Tetromino$rotateTetromino, newOrientation, tetromino);
@@ -7308,13 +7380,13 @@ var $author$project$Tetromino$rotateCW = function (tetromino) {
 		var _v0 = tetromino.orientation;
 		switch (_v0.$) {
 			case 'Zero':
-				return $author$project$Tetromino$Right;
+				return $author$project$Types$Right;
 			case 'Right':
-				return $author$project$Tetromino$Two;
+				return $author$project$Types$Two;
 			case 'Two':
-				return $author$project$Tetromino$Left;
+				return $author$project$Types$Left;
 			default:
-				return $author$project$Tetromino$Zero;
+				return $author$project$Types$Zero;
 		}
 	}();
 	return A2($author$project$Tetromino$rotateTetromino, newOrientation, tetromino);
@@ -7429,21 +7501,224 @@ var $author$project$Main$handleInput = F2(
 		}();
 		return newModel;
 	});
+var $elm$core$List$isEmpty = function (xs) {
+	if (!xs.b) {
+		return true;
+	} else {
+		return false;
+	}
+};
+var $author$project$Tetromino$Tetromino = F5(
+	function (piece, orientation, pos, localPos, offsets) {
+		return {localPos: localPos, offsets: offsets, orientation: orientation, piece: piece, pos: pos};
+	});
+var $author$project$Tetromino$initialPositions = function (piece) {
+	switch (piece.$) {
+		case 'I':
+			return _List_fromArray(
+				[
+					_Utils_Tuple2(-1, 0),
+					_Utils_Tuple2(0, 0),
+					_Utils_Tuple2(1, 0),
+					_Utils_Tuple2(2, 0)
+				]);
+		case 'J':
+			return _List_fromArray(
+				[
+					_Utils_Tuple2(-1, 1),
+					_Utils_Tuple2(-1, 0),
+					_Utils_Tuple2(0, 0),
+					_Utils_Tuple2(1, 0)
+				]);
+		case 'L':
+			return _List_fromArray(
+				[
+					_Utils_Tuple2(-1, 0),
+					_Utils_Tuple2(0, 0),
+					_Utils_Tuple2(1, 0),
+					_Utils_Tuple2(1, 1)
+				]);
+		case 'T':
+			return _List_fromArray(
+				[
+					_Utils_Tuple2(-1, 0),
+					_Utils_Tuple2(0, 0),
+					_Utils_Tuple2(1, 0),
+					_Utils_Tuple2(0, 1)
+				]);
+		case 'S':
+			return _List_fromArray(
+				[
+					_Utils_Tuple2(-1, 0),
+					_Utils_Tuple2(0, 0),
+					_Utils_Tuple2(0, 1),
+					_Utils_Tuple2(1, 1)
+				]);
+		case 'Z':
+			return _List_fromArray(
+				[
+					_Utils_Tuple2(-1, 1),
+					_Utils_Tuple2(0, 1),
+					_Utils_Tuple2(0, 0),
+					_Utils_Tuple2(1, 0)
+				]);
+		case 'O':
+			return _List_fromArray(
+				[
+					_Utils_Tuple2(0, 0),
+					_Utils_Tuple2(1, 0),
+					_Utils_Tuple2(0, 1),
+					_Utils_Tuple2(1, 1)
+				]);
+		default:
+			return _List_Nil;
+	}
+};
+var $author$project$Tetromino$pieceOffsets = function (piece) {
+	switch (piece.$) {
+		case 'I':
+			return _List_fromArray(
+				[
+					_Utils_Tuple2(
+					$author$project$Types$Zero,
+					_List_fromArray(
+						[
+							_Utils_Tuple2(0, 0),
+							_Utils_Tuple2(-1, 0),
+							_Utils_Tuple2(2, 0),
+							_Utils_Tuple2(-1, 0),
+							_Utils_Tuple2(2, 0)
+						])),
+					_Utils_Tuple2(
+					$author$project$Types$Right,
+					_List_fromArray(
+						[
+							_Utils_Tuple2(-1, 0),
+							_Utils_Tuple2(0, 0),
+							_Utils_Tuple2(0, 0),
+							_Utils_Tuple2(0, 1),
+							_Utils_Tuple2(0, -2)
+						])),
+					_Utils_Tuple2(
+					$author$project$Types$Two,
+					_List_fromArray(
+						[
+							_Utils_Tuple2(-1, 1),
+							_Utils_Tuple2(1, 1),
+							_Utils_Tuple2(-2, 1),
+							_Utils_Tuple2(1, 0),
+							_Utils_Tuple2(-2, 0)
+						])),
+					_Utils_Tuple2(
+					$author$project$Types$Left,
+					_List_fromArray(
+						[
+							_Utils_Tuple2(0, 1),
+							_Utils_Tuple2(0, 1),
+							_Utils_Tuple2(0, 1),
+							_Utils_Tuple2(0, -1),
+							_Utils_Tuple2(0, 2)
+						]))
+				]);
+		case 'O':
+			return _List_fromArray(
+				[
+					_Utils_Tuple2(
+					$author$project$Types$Zero,
+					_List_fromArray(
+						[
+							_Utils_Tuple2(0, 0)
+						])),
+					_Utils_Tuple2(
+					$author$project$Types$Right,
+					_List_fromArray(
+						[
+							_Utils_Tuple2(0, -1)
+						])),
+					_Utils_Tuple2(
+					$author$project$Types$Two,
+					_List_fromArray(
+						[
+							_Utils_Tuple2(-1, -1)
+						])),
+					_Utils_Tuple2(
+					$author$project$Types$Left,
+					_List_fromArray(
+						[
+							_Utils_Tuple2(-1, 0)
+						]))
+				]);
+		default:
+			return _List_fromArray(
+				[
+					_Utils_Tuple2(
+					$author$project$Types$Zero,
+					_List_fromArray(
+						[
+							_Utils_Tuple2(0, 0),
+							_Utils_Tuple2(0, 0),
+							_Utils_Tuple2(0, 0),
+							_Utils_Tuple2(0, 0),
+							_Utils_Tuple2(0, 0)
+						])),
+					_Utils_Tuple2(
+					$author$project$Types$Right,
+					_List_fromArray(
+						[
+							_Utils_Tuple2(0, 0),
+							_Utils_Tuple2(1, 0),
+							_Utils_Tuple2(1, -1),
+							_Utils_Tuple2(0, 2),
+							_Utils_Tuple2(1, 2)
+						])),
+					_Utils_Tuple2(
+					$author$project$Types$Two,
+					_List_fromArray(
+						[
+							_Utils_Tuple2(0, 0),
+							_Utils_Tuple2(0, 0),
+							_Utils_Tuple2(0, 0),
+							_Utils_Tuple2(0, 0),
+							_Utils_Tuple2(0, 0)
+						])),
+					_Utils_Tuple2(
+					$author$project$Types$Left,
+					_List_fromArray(
+						[
+							_Utils_Tuple2(0, 0),
+							_Utils_Tuple2(-1, 0),
+							_Utils_Tuple2(-1, -1),
+							_Utils_Tuple2(0, 2),
+							_Utils_Tuple2(-1, 2)
+						]))
+				]);
+	}
+};
+var $author$project$Tetromino$mkTetromino = function (piece) {
+	var positions = $author$project$Tetromino$initialPositions(piece);
+	var offsets = $author$project$Tetromino$pieceOffsets(piece);
+	return A5(
+		$author$project$Tetromino$Tetromino,
+		piece,
+		$author$project$Types$Zero,
+		_Utils_Tuple2(0, 0),
+		positions,
+		offsets);
+};
 var $author$project$Main$update = F2(
 	function (msg, model) {
 		switch (msg.$) {
 			case 'Frame':
-				var newModel = $author$project$Gravity$doGravity(
+				return $author$project$Gravity$doGravity(
 					_Utils_update(
 						model,
 						{gravityFrames: model.gravityFrames + 1}));
-				return _Utils_Tuple2(newModel, $elm$core$Platform$Cmd$none);
 			case 'KeyDown':
 				var input = msg.a;
 				return _Utils_Tuple2(
 					A2($author$project$Main$handleInput, input.keyCode, model),
 					$elm$core$Platform$Cmd$none);
-			default:
+			case 'KeyUp':
 				var input = msg.a;
 				var newModel = function () {
 					var _v1 = input.keyCode;
@@ -7455,6 +7730,29 @@ var $author$project$Main$update = F2(
 						return model;
 					}
 				}();
+				return _Utils_Tuple2(newModel, $elm$core$Platform$Cmd$none);
+			default:
+				var piece = msg.a;
+				var newTetromino = A2(
+					$author$project$Tetromino$moveTetromino,
+					_Utils_Tuple2(5, 17),
+					$author$project$Tetromino$mkTetromino(piece));
+				var newBag = function (b) {
+					return $elm$core$List$isEmpty(b) ? $author$project$PieceGen$fullBag : b;
+				}(
+					A2(
+						$elm$core$List$filter,
+						A2(
+							$elm$core$Basics$composeL,
+							$elm$core$Basics$not,
+							$elm$core$Basics$eq(piece)),
+						model.pieceBag));
+				var newModel = _Utils_update(
+					model,
+					{
+						currTetromino: $elm$core$Maybe$Just(newTetromino),
+						pieceBag: newBag
+					});
 				return _Utils_Tuple2(newModel, $elm$core$Platform$Cmd$none);
 		}
 	});

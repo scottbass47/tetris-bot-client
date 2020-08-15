@@ -2,25 +2,7 @@ module Tetromino exposing (..)
 
 import List
 import Maybe exposing (withDefault)
-import Types exposing (GridPoint, Pos, Rotation(..))
-
-
-type Piece
-    = I
-    | J
-    | L
-    | T
-    | S
-    | Z
-    | O
-    | Blank
-
-
-type Orientation
-    = Zero
-    | Right
-    | Two
-    | Left
+import Types exposing (GridPoint, Orientation(..), Piece(..), Pos, Rotation(..))
 
 
 type alias Tetromino =

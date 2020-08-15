@@ -1,8 +1,10 @@
 module GameState exposing (..)
 
 import Board exposing (Board)
-import Tetromino exposing (Piece(..), Tetromino, mkTetromino, moveTetromino)
-import Types exposing (GridPoint)
+import PieceGen
+import Random
+import Tetromino exposing (Tetromino)
+import Types exposing (GridPoint, Msg(..), Piece)
 
 
 type alias GameState =
@@ -11,6 +13,7 @@ type alias GameState =
     , gravityFrames : Float
     , level : Int
     , softDropping : Bool
+    , pieceBag : List Piece
     }
 
 
@@ -22,13 +25,15 @@ boardDims =
 initialGameState : () -> GameState
 initialGameState () =
     { board = Board.initBoard boardDims
-    , currTetromino = Just (spawnTetromino ())
+    , currTetromino = Nothing
     , gravityFrames = 0
     , level = 0
     , softDropping = False
+    , pieceBag = PieceGen.fullBag
     }
 
 
-spawnTetromino : () -> Tetromino
-spawnTetromino () =
-    mkTetromino T |> moveTetromino ( 5, 17 )
+spawnTetromino : GameState -> Cmd Msg
+spawnTetromino state =
+    Random.generate NextPiece
+        (PieceGen.pieceGenerator state.pieceBag)

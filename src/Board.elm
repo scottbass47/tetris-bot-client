@@ -3,8 +3,8 @@ module Board exposing (..)
 import Array exposing (Array)
 import List
 import Maybe exposing (withDefault)
-import Tetromino exposing (Piece(..), Tetromino, minos, minosPositions)
-import Types exposing (GridPoint, Pos)
+import Tetromino exposing (Tetromino, minosPositions)
+import Types exposing (GridPoint, Piece(..))
 
 
 type alias Board =

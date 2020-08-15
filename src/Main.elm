@@ -1,9 +1,9 @@
 module Main exposing (main)
 
 import Array
-import Board exposing (Board, minoCount)
+import Board exposing (Board)
 import Browser
-import Browser.Events exposing (onAnimationFrameDelta, onKeyDown, onKeyPress, onKeyUp)
+import Browser.Events exposing (onAnimationFrameDelta, onKeyDown, onKeyUp)
 import Canvas exposing (Point, Renderable, rect, shapes)
 import Canvas.Settings exposing (fill)
 import Color exposing (Color)
@@ -12,21 +12,16 @@ import Gravity exposing (doGravity)
 import Html exposing (Html, div)
 import Html.Attributes exposing (style)
 import Json.Decode as Json
-import Keyboard.Event exposing (KeyCode, KeyboardEvent, decodeKeyboardEvent)
+import Keyboard.Event exposing (decodeKeyboardEvent)
 import Keyboard.Key as Keys exposing (Key)
+import PieceGen
 import SRS exposing (tryMove)
 import Tetromino exposing (..)
-import Types exposing (GridPoint, Pos, Rotation(..))
+import Types exposing (GridPoint, Msg(..), Piece(..), Pos, Rotation(..))
 
 
 type alias Model =
     GameState
-
-
-type Msg
-    = Frame Float
-    | KeyDown KeyboardEvent
-    | KeyUp KeyboardEvent
 
 
 main : Program () Model Msg
@@ -41,8 +36,12 @@ main =
 
 init : () -> ( Model, Cmd Msg )
 init () =
-    ( initialGameState ()
-    , Cmd.none
+    let
+        model =
+            initialGameState ()
+    in
+    ( model
+    , GameState.spawnTetromino model
     )
 
 
@@ -64,12 +63,8 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Frame _ ->
-            let
-                newModel =
-                    { model | gravityFrames = model.gravityFrames + 1 }
-                        |> doGravity
-            in
-            ( newModel, Cmd.none )
+            { model | gravityFrames = model.gravityFrames + 1 }
+                |> doGravity
 
         KeyDown input ->
             ( handleInput input.keyCode model, Cmd.none )
@@ -83,6 +78,26 @@ update msg model =
 
                         _ ->
                             model
+            in
+            ( newModel, Cmd.none )
+
+        NextPiece piece ->
+            let
+                newTetromino =
+                    piece |> mkTetromino |> moveTetromino ( 5, 17 )
+
+                newBag =
+                    List.filter (not << (==) piece) model.pieceBag
+                        |> (\b ->
+                                if List.isEmpty b then
+                                    PieceGen.fullBag
+
+                                else
+                                    b
+                           )
+
+                newModel =
+                    { model | currTetromino = Just newTetromino, pieceBag = newBag }
             in
             ( newModel, Cmd.none )
 

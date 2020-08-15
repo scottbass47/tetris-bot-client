@@ -1,8 +1,8 @@
 module SRS exposing (tryMove, tryRotate)
 
 import Board exposing (Board, canPlace)
-import Tetromino exposing (Orientation, Tetromino, getOffset, moveTetromino, rotate)
-import Types exposing (Pos, Rotation)
+import Tetromino exposing (Tetromino, getOffset, moveTetromino, rotate)
+import Types exposing (Orientation, Pos, Rotation)
 
 
 tryRotate : Board -> Tetromino -> Rotation -> Maybe Tetromino

@@ -5181,7 +5181,7 @@ var $elm$core$Task$perform = F2(
 				A2($elm$core$Task$map, toMessage, task)));
 	});
 var $elm$browser$Browser$element = _Browser_element;
-var $author$project$Main$boardDims = _Utils_Tuple2(20, 10);
+var $author$project$GameState$boardDims = _Utils_Tuple2(22, 10);
 var $author$project$Tetromino$Blank = {$: 'Blank'};
 var $elm$core$Array$repeat = F2(
 	function (n, e) {
@@ -5201,8 +5201,6 @@ var $author$project$Board$initBoard = function (_v0) {
 		rows: rows
 	};
 };
-var $elm$core$Platform$Cmd$batch = _Platform_batch;
-var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
 var $author$project$Tetromino$T = {$: 'T'};
 var $author$project$Tetromino$Tetromino = F5(
 	function (piece, orientation, pos, localPos, offsets) {
@@ -5422,21 +5420,26 @@ var $author$project$Tetromino$moveTetromino = F2(
 				pos: _Utils_Tuple2(x + t.pos.a, y + t.pos.b)
 			});
 	});
-var $author$project$Main$spawnTetromino = function (_v0) {
+var $author$project$GameState$spawnTetromino = function (_v0) {
 	return A2(
 		$author$project$Tetromino$moveTetromino,
 		_Utils_Tuple2(5, 17),
 		$author$project$Tetromino$mkTetromino($author$project$Tetromino$T));
 };
+var $author$project$GameState$initialGameState = function (_v0) {
+	return {
+		board: $author$project$Board$initBoard($author$project$GameState$boardDims),
+		currTetromino: $elm$core$Maybe$Just(
+			$author$project$GameState$spawnTetromino(_Utils_Tuple0)),
+		gravityFrames: 0,
+		level: 8
+	};
+};
+var $elm$core$Platform$Cmd$batch = _Platform_batch;
+var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
 var $author$project$Main$init = function (_v0) {
 	return _Utils_Tuple2(
-		{
-			board: $author$project$Board$initBoard($author$project$Main$boardDims),
-			currTetromino: $elm$core$Maybe$Just(
-				$author$project$Main$spawnTetromino(_Utils_Tuple0)),
-			gravityElapsed: 0,
-			gravityThreshold: 200
-		},
+		$author$project$GameState$initialGameState(_Utils_Tuple0),
 		$elm$core$Platform$Cmd$none);
 };
 var $author$project$Main$Frame = function (a) {
@@ -6321,6 +6324,85 @@ var $author$project$Main$subscriptions = function (_v0) {
 			]));
 };
 var $elm$core$Basics$ge = _Utils_ge;
+var $elm$core$Bitwise$and = _Bitwise_and;
+var $elm$core$Bitwise$shiftRightZfBy = _Bitwise_shiftRightZfBy;
+var $elm$core$Array$bitMask = 4294967295 >>> (32 - $elm$core$Array$shiftStep);
+var $elm$core$Elm$JsArray$unsafeGet = _JsArray_unsafeGet;
+var $elm$core$Array$getHelp = F3(
+	function (shift, index, tree) {
+		getHelp:
+		while (true) {
+			var pos = $elm$core$Array$bitMask & (index >>> shift);
+			var _v0 = A2($elm$core$Elm$JsArray$unsafeGet, pos, tree);
+			if (_v0.$ === 'SubTree') {
+				var subTree = _v0.a;
+				var $temp$shift = shift - $elm$core$Array$shiftStep,
+					$temp$index = index,
+					$temp$tree = subTree;
+				shift = $temp$shift;
+				index = $temp$index;
+				tree = $temp$tree;
+				continue getHelp;
+			} else {
+				var values = _v0.a;
+				return A2($elm$core$Elm$JsArray$unsafeGet, $elm$core$Array$bitMask & index, values);
+			}
+		}
+	});
+var $elm$core$Bitwise$shiftLeftBy = _Bitwise_shiftLeftBy;
+var $elm$core$Array$tailIndex = function (len) {
+	return (len >>> 5) << 5;
+};
+var $elm$core$Array$get = F2(
+	function (index, _v0) {
+		var len = _v0.a;
+		var startShift = _v0.b;
+		var tree = _v0.c;
+		var tail = _v0.d;
+		return ((index < 0) || (_Utils_cmp(index, len) > -1)) ? $elm$core$Maybe$Nothing : ((_Utils_cmp(
+			index,
+			$elm$core$Array$tailIndex(len)) > -1) ? $elm$core$Maybe$Just(
+			A2($elm$core$Elm$JsArray$unsafeGet, $elm$core$Array$bitMask & index, tail)) : $elm$core$Maybe$Just(
+			A3($elm$core$Array$getHelp, startShift, index, tree)));
+	});
+var $elm$core$Array$fromListHelp = F3(
+	function (list, nodeList, nodeListSize) {
+		fromListHelp:
+		while (true) {
+			var _v0 = A2($elm$core$Elm$JsArray$initializeFromList, $elm$core$Array$branchFactor, list);
+			var jsArray = _v0.a;
+			var remainingItems = _v0.b;
+			if (_Utils_cmp(
+				$elm$core$Elm$JsArray$length(jsArray),
+				$elm$core$Array$branchFactor) < 0) {
+				return A2(
+					$elm$core$Array$builderToArray,
+					true,
+					{nodeList: nodeList, nodeListSize: nodeListSize, tail: jsArray});
+			} else {
+				var $temp$list = remainingItems,
+					$temp$nodeList = A2(
+					$elm$core$List$cons,
+					$elm$core$Array$Leaf(jsArray),
+					nodeList),
+					$temp$nodeListSize = nodeListSize + 1;
+				list = $temp$list;
+				nodeList = $temp$nodeList;
+				nodeListSize = $temp$nodeListSize;
+				continue fromListHelp;
+			}
+		}
+	});
+var $elm$core$Array$fromList = function (list) {
+	if (!list.b) {
+		return $elm$core$Array$empty;
+	} else {
+		return A3($elm$core$Array$fromListHelp, list, _List_Nil, 0);
+	}
+};
+var $author$project$Gravity$gravityTable = $elm$core$Array$fromList(
+	_List_fromArray(
+		[60, 50, 40, 30, 20, 10, 8, 6, 4, 2, 1]));
 var $elm$core$Elm$JsArray$appendN = _JsArray_appendN;
 var $elm$core$Elm$JsArray$slice = _JsArray_slice;
 var $elm$core$Array$appendHelpBuilder = F2(
@@ -6344,12 +6426,8 @@ var $elm$core$Array$appendHelpBuilder = F2(
 			tail: $elm$core$Elm$JsArray$empty
 		} : {nodeList: builder.nodeList, nodeListSize: builder.nodeListSize, tail: appended});
 	});
-var $elm$core$Bitwise$and = _Bitwise_and;
-var $elm$core$Bitwise$shiftRightZfBy = _Bitwise_shiftRightZfBy;
-var $elm$core$Array$bitMask = 4294967295 >>> (32 - $elm$core$Array$shiftStep);
 var $elm$core$Elm$JsArray$push = _JsArray_push;
 var $elm$core$Elm$JsArray$singleton = _JsArray_singleton;
-var $elm$core$Elm$JsArray$unsafeGet = _JsArray_unsafeGet;
 var $elm$core$Elm$JsArray$unsafeSet = _JsArray_unsafeSet;
 var $elm$core$Array$insertTailInTree = F4(
 	function (shift, index, tail, tree) {
@@ -6386,7 +6464,6 @@ var $elm$core$Array$insertTailInTree = F4(
 			}
 		}
 	});
-var $elm$core$Bitwise$shiftLeftBy = _Bitwise_shiftLeftBy;
 var $elm$core$Array$unsafeReplaceTail = F2(
 	function (newTail, _v0) {
 		var len = _v0.a;
@@ -6501,41 +6578,6 @@ var $elm$core$Array$append = F2(
 						bTree)));
 		}
 	});
-var $elm$core$Array$fromListHelp = F3(
-	function (list, nodeList, nodeListSize) {
-		fromListHelp:
-		while (true) {
-			var _v0 = A2($elm$core$Elm$JsArray$initializeFromList, $elm$core$Array$branchFactor, list);
-			var jsArray = _v0.a;
-			var remainingItems = _v0.b;
-			if (_Utils_cmp(
-				$elm$core$Elm$JsArray$length(jsArray),
-				$elm$core$Array$branchFactor) < 0) {
-				return A2(
-					$elm$core$Array$builderToArray,
-					true,
-					{nodeList: nodeList, nodeListSize: nodeListSize, tail: jsArray});
-			} else {
-				var $temp$list = remainingItems,
-					$temp$nodeList = A2(
-					$elm$core$List$cons,
-					$elm$core$Array$Leaf(jsArray),
-					nodeList),
-					$temp$nodeListSize = nodeListSize + 1;
-				list = $temp$list;
-				nodeList = $temp$nodeList;
-				nodeListSize = $temp$nodeListSize;
-				continue fromListHelp;
-			}
-		}
-	});
-var $elm$core$Array$fromList = function (list) {
-	if (!list.b) {
-		return $elm$core$Array$empty;
-	} else {
-		return A3($elm$core$Array$fromListHelp, list, _List_Nil, 0);
-	}
-};
 var $elm$core$Array$filter = F2(
 	function (isGood, array) {
 		return $elm$core$Array$fromList(
@@ -6556,9 +6598,6 @@ var $author$project$Board$fromArrIndex = F2(
 			A2($elm$core$Basics$modBy, board.cols, i));
 	});
 var $elm$core$Elm$JsArray$indexedMap = _JsArray_indexedMap;
-var $elm$core$Array$tailIndex = function (len) {
-	return (len >>> 5) << 5;
-};
 var $elm$core$Array$indexedMap = F2(
 	function (func, _v0) {
 		var len = _v0.a;
@@ -7036,39 +7075,6 @@ var $author$project$Board$inBounds = F2(
 		var c = _v0.b;
 		return (r >= 0) && ((_Utils_cmp(r, board.rows) < 0) && ((c >= 0) && (_Utils_cmp(c, board.cols) < 0)));
 	});
-var $elm$core$Array$getHelp = F3(
-	function (shift, index, tree) {
-		getHelp:
-		while (true) {
-			var pos = $elm$core$Array$bitMask & (index >>> shift);
-			var _v0 = A2($elm$core$Elm$JsArray$unsafeGet, pos, tree);
-			if (_v0.$ === 'SubTree') {
-				var subTree = _v0.a;
-				var $temp$shift = shift - $elm$core$Array$shiftStep,
-					$temp$index = index,
-					$temp$tree = subTree;
-				shift = $temp$shift;
-				index = $temp$index;
-				tree = $temp$tree;
-				continue getHelp;
-			} else {
-				var values = _v0.a;
-				return A2($elm$core$Elm$JsArray$unsafeGet, $elm$core$Array$bitMask & index, values);
-			}
-		}
-	});
-var $elm$core$Array$get = F2(
-	function (index, _v0) {
-		var len = _v0.a;
-		var startShift = _v0.b;
-		var tree = _v0.c;
-		var tail = _v0.d;
-		return ((index < 0) || (_Utils_cmp(index, len) > -1)) ? $elm$core$Maybe$Nothing : ((_Utils_cmp(
-			index,
-			$elm$core$Array$tailIndex(len)) > -1) ? $elm$core$Maybe$Just(
-			A2($elm$core$Elm$JsArray$unsafeGet, $elm$core$Array$bitMask & index, tail)) : $elm$core$Maybe$Just(
-			A3($elm$core$Array$getHelp, startShift, index, tree)));
-	});
 var $elm$core$Maybe$withDefault = F2(
 	function (_default, maybe) {
 		if (maybe.$ === 'Just') {
@@ -7105,39 +7111,46 @@ var $author$project$SRS$tryMove = F3(
 		var t = A2($author$project$Tetromino$moveTetromino, delta, tetromino);
 		return A2($author$project$Board$canPlace, board, t) ? $elm$core$Maybe$Just(t) : $elm$core$Maybe$Nothing;
 	});
-var $author$project$Main$doGravity = function (model) {
-	var _v0 = model.currTetromino;
+var $author$project$Gravity$doGravity = function (state) {
+	var _v0 = state.currTetromino;
 	if (_v0.$ === 'Nothing') {
-		return model;
+		return state;
 	} else {
 		var tetromino = _v0.a;
-		if (_Utils_cmp(model.gravityElapsed, model.gravityThreshold) > -1) {
-			var newModel = function () {
-				var _v1 = A3(
-					$author$project$SRS$tryMove,
-					model.board,
-					tetromino,
-					_Utils_Tuple2(0, -1));
-				if (_v1.$ === 'Just') {
-					var t = _v1;
-					return _Utils_update(
-						model,
-						{currTetromino: t});
-				} else {
-					return _Utils_update(
-						model,
-						{
-							board: A2($author$project$Board$placeTetromino, tetromino, model.board),
-							currTetromino: $elm$core$Maybe$Just(
-								$author$project$Main$spawnTetromino(_Utils_Tuple0))
-						});
-				}
-			}();
+		var gravityLevel = A2(
+			$elm$core$Maybe$withDefault,
+			0,
+			A2($elm$core$Array$get, state.level, $author$project$Gravity$gravityTable));
+		var updateGravityFrames = function (s) {
 			return _Utils_update(
-				newModel,
-				{gravityElapsed: newModel.gravityElapsed - newModel.gravityThreshold});
+				s,
+				{gravityFrames: s.gravityFrames - gravityLevel});
+		};
+		if (_Utils_cmp(state.gravityFrames, gravityLevel) > -1) {
+			var _v1 = A3(
+				$author$project$SRS$tryMove,
+				state.board,
+				tetromino,
+				_Utils_Tuple2(0, -1));
+			if (_v1.$ === 'Just') {
+				var t = _v1;
+				return $author$project$Gravity$doGravity(
+					updateGravityFrames(
+						_Utils_update(
+							state,
+							{currTetromino: t})));
+			} else {
+				return updateGravityFrames(
+					_Utils_update(
+						state,
+						{
+							board: A2($author$project$Board$placeTetromino, tetromino, state.board),
+							currTetromino: $elm$core$Maybe$Just(
+								$author$project$GameState$spawnTetromino(_Utils_Tuple0))
+						}));
+			}
 		} else {
-			return model;
+			return state;
 		}
 	}
 };
@@ -7396,11 +7409,10 @@ var $author$project$Main$handleInput = F2(
 var $author$project$Main$update = F2(
 	function (msg, model) {
 		if (msg.$ === 'Frame') {
-			var dt = msg.a;
-			var newModel = $author$project$Main$doGravity(
+			var newModel = $author$project$Gravity$doGravity(
 				_Utils_update(
 					model,
-					{gravityElapsed: model.gravityElapsed + dt}));
+					{gravityFrames: model.gravityFrames + 1}));
 			return _Utils_Tuple2(newModel, $elm$core$Platform$Cmd$none);
 		} else {
 			var input = msg.a;
@@ -7410,8 +7422,8 @@ var $author$project$Main$update = F2(
 		}
 	});
 var $author$project$Main$minoSize = 25;
-var $author$project$Main$boardHeight = $author$project$Main$minoSize * $author$project$Main$boardDims.a;
-var $author$project$Main$boardWidth = $author$project$Main$minoSize * $author$project$Main$boardDims.b;
+var $author$project$Main$boardHeight = $author$project$Main$minoSize * $author$project$GameState$boardDims.a;
+var $author$project$Main$boardWidth = $author$project$Main$minoSize * $author$project$GameState$boardDims.b;
 var $elm$html$Html$div = _VirtualDom_node('div');
 var $avh4$elm_color$Color$RgbaSpace = F4(
 	function (a, b, c, d) {

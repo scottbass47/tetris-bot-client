@@ -7,6 +7,8 @@ import Browser.Events exposing (onAnimationFrameDelta, onKeyDown, onKeyPress, on
 import Canvas exposing (Point, Renderable, rect, shapes)
 import Canvas.Settings exposing (fill)
 import Color exposing (Color)
+import GameState exposing (GameState, initialGameState)
+import Gravity exposing (doGravity)
 import Html exposing (Html, div)
 import Html.Attributes exposing (style)
 import Json.Decode as Json
@@ -18,11 +20,7 @@ import Types exposing (GridPoint, Pos, Rotation(..))
 
 
 type alias Model =
-    { board : Board
-    , currTetromino : Maybe Tetromino
-    , gravityElapsed : Float
-    , gravityThreshold : Float
-    }
+    GameState
 
 
 type Msg
@@ -42,18 +40,9 @@ main =
 
 init : () -> ( Model, Cmd Msg )
 init () =
-    ( { board = Board.initBoard boardDims
-      , currTetromino = Just (spawnTetromino ())
-      , gravityElapsed = 0
-      , gravityThreshold = 200
-      }
+    ( initialGameState ()
     , Cmd.none
     )
-
-
-spawnTetromino : () -> Tetromino
-spawnTetromino () =
-    mkTetromino T |> moveTetromino ( 5, 17 )
 
 
 view : Model -> Html Msg
@@ -73,10 +62,10 @@ view model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Frame dt ->
+        Frame _ ->
             let
                 newModel =
-                    { model | gravityElapsed = model.gravityElapsed + dt }
+                    { model | gravityFrames = model.gravityFrames + 1 }
                         |> doGravity
             in
             ( newModel, Cmd.none )
@@ -160,43 +149,12 @@ doHardDrop model =
             f tetromino
 
 
-doGravity : Model -> Model
-doGravity model =
-    case model.currTetromino of
-        Nothing ->
-            model
-
-        Just tetromino ->
-            if model.gravityElapsed >= model.gravityThreshold then
-                let
-                    newModel =
-                        case tryMove model.board tetromino ( 0, -1 ) of
-                            (Just _) as t ->
-                                { model | currTetromino = t }
-
-                            Nothing ->
-                                { model
-                                    | board = Board.placeTetromino tetromino model.board
-                                    , currTetromino = Just (spawnTetromino ())
-                                }
-                in
-                { newModel | gravityElapsed = newModel.gravityElapsed - newModel.gravityThreshold }
-
-            else
-                model
-
-
 subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.batch
         [ onAnimationFrameDelta Frame
         , onKeyDown (Json.map HandleInput decodeKeyboardEvent)
         ]
-
-
-boardDims : GridPoint
-boardDims =
-    ( 20, 10 )
 
 
 boardPosition : Point
@@ -211,12 +169,12 @@ minoSize =
 
 boardWidth : Float
 boardWidth =
-    boardDims |> Tuple.second |> toFloat |> (*) minoSize
+    GameState.boardDims |> Tuple.second |> toFloat |> (*) minoSize
 
 
 boardHeight : Float
 boardHeight =
-    boardDims |> Tuple.first |> toFloat |> (*) minoSize
+    GameState.boardDims |> Tuple.first |> toFloat |> (*) minoSize
 
 
 minoColor : Piece -> Color
@@ -273,7 +231,6 @@ renderGame model =
                 Just t ->
                     renderTetromino t
     in
-    -- clearScreen :: currTetrominoRender ++ renderBoard model
     clearScreen :: renderBoard model ++ currTetrominoRender
 
 

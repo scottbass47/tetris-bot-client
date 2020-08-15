@@ -147,7 +147,7 @@ moveTetromino ( x, y ) t =
     { t | pos = ( x + Tuple.first t.pos, y + Tuple.second t.pos ) }
 
 
-rotateTetromino : Orientation -> Tetromino -> Tetromino
+rotateTetromino : Orientation -> (Tetromino -> Tetromino)
 rotateTetromino o tetromino =
     { tetromino | orientation = o }
 

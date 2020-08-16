@@ -7769,7 +7769,7 @@ var $author$project$Main$updateGame = F2(
 				var piece = msg.a;
 				var newTetromino = A2(
 					$author$project$Tetromino$moveTetromino,
-					_Utils_Tuple2(5, 17),
+					_Utils_Tuple2(4, 20),
 					$author$project$Tetromino$mkTetromino(piece));
 				var newBag = function (b) {
 					return $elm$core$List$isEmpty(b) ? $author$project$PieceGen$fullBag : b;

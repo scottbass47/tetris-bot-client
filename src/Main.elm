@@ -123,7 +123,7 @@ updateGame msg state =
         NextPiece piece ->
             let
                 newTetromino =
-                    piece |> mkTetromino |> moveTetromino ( 5, 17 )
+                    piece |> mkTetromino |> moveTetromino ( 4, 20 )
 
                 newBag =
                     List.filter (not << (==) piece) state.pieceBag

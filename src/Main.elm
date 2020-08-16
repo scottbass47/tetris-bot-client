@@ -7,7 +7,7 @@ import Browser.Events exposing (onAnimationFrameDelta, onKeyDown, onKeyUp)
 import Canvas exposing (Point, Renderable, rect, shapes)
 import Canvas.Settings exposing (fill)
 import Color exposing (Color)
-import GameState exposing (GameState, boardDims, initialGameState, resetLockDelay, spawnIfReady, spawnTetromino, startLockDelay, tryIncrementLockDelay)
+import GameState exposing (GameState, boardDims, initialGameState)
 import Gravity exposing (doGravity)
 import Html exposing (Html, div)
 import Html.Attributes exposing (style)
@@ -15,13 +15,16 @@ import Json.Decode as Json
 import Keyboard.Event exposing (decodeKeyboardEvent)
 import Keyboard.Key as Keys exposing (Key)
 import PieceGen
-import SRS exposing (tryMove)
 import Tetromino exposing (..)
-import Types exposing (GridPoint, Msg(..), Piece(..), Pos, Rotation(..))
+import Types exposing (GridPoint, Msg(..), Piece(..), Rotation(..))
 
 
 type alias Model =
-    GameState
+    { gameState : GameState
+    , frameElapsed : Float
+    , frameCounter : Int
+    , fps : Int
+    }
 
 
 main : Program () Model Msg
@@ -37,11 +40,15 @@ main =
 init : () -> ( Model, Cmd Msg )
 init () =
     let
-        model =
+        state =
             initialGameState ()
     in
-    ( model
-    , GameState.spawnTetromino model
+    ( { gameState = state
+      , frameElapsed = 0
+      , frameCounter = 0
+      , fps = 0
+      }
+    , GameState.spawnTetromino state
     )
 
 
@@ -53,32 +60,63 @@ view model =
         , style "align-items" "center"
         ]
         [ Canvas.toHtml
-            ( round (boardWidth model.board), round (boardHeight model.board) )
+            ( round (boardWidth model.gameState.board), round (boardHeight model.gameState.board) )
             []
-            (renderGame model)
+            (renderGame model.gameState)
         ]
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        ( newGameState, cmd ) =
+            updateGame msg model.gameState
+
+        newModel =
+            case msg of
+                Frame dt ->
+                    { model
+                        | frameElapsed = model.frameElapsed + (dt / 1000)
+                        , frameCounter = model.frameCounter + 1
+                    }
+                        |> (\m ->
+                                if m.frameElapsed >= 1 then
+                                    { m
+                                        | frameElapsed = m.frameElapsed - 1
+                                        , frameCounter = 0
+                                        , fps = Debug.log "FPS: " m.frameCounter
+                                    }
+
+                                else
+                                    m
+                           )
+
+                _ ->
+                    model
+    in
+    ( { newModel | gameState = newGameState }, cmd )
+
+
+updateGame : Msg -> GameState -> ( GameState, Cmd Msg )
+updateGame msg state =
     case msg of
         Frame dt ->
-            { model | gravityFrames = model.gravityFrames + 1 }
-                |> tryIncrementLockDelay (dt / 1000)
+            { state | gravityFrames = state.gravityFrames + 1 }
+                |> GameState.tryIncrementLockDelay (dt / 1000)
                 |> doGravity
 
         KeyDown input ->
-            handleInput input.keyCode model
+            handleInput input.keyCode state
 
         KeyUp input ->
             let
                 newModel =
                     case input.keyCode of
                         Keys.Down ->
-                            { model | softDropping = False }
+                            { state | softDropping = False }
 
                         _ ->
-                            model
+                            state
             in
             ( newModel, Cmd.none )
 
@@ -88,7 +126,7 @@ update msg model =
                     piece |> mkTetromino |> moveTetromino ( 5, 17 )
 
                 newBag =
-                    List.filter (not << (==) piece) model.pieceBag
+                    List.filter (not << (==) piece) state.pieceBag
                         |> (\b ->
                                 if List.isEmpty b then
                                     PieceGen.fullBag
@@ -98,106 +136,34 @@ update msg model =
                            )
 
                 newModel =
-                    { model | currTetromino = Just newTetromino, pieceBag = newBag }
+                    { state | currTetromino = Just newTetromino, pieceBag = newBag }
             in
             ( newModel, Cmd.none )
 
 
-handleInput : Key -> Model -> ( Model, Cmd Msg )
-handleInput key model =
+handleInput : Key -> GameState -> ( GameState, Cmd Msg )
+handleInput key state =
     case key of
         Keys.Left ->
-            movePiece ( -1, 0 ) model
+            GameState.movePiece ( -1, 0 ) state
 
         Keys.Right ->
-            movePiece ( 1, 0 ) model
+            GameState.movePiece ( 1, 0 ) state
 
         Keys.Z ->
-            rotatePiece CW model
+            GameState.rotatePiece CW state
 
         Keys.X ->
-            rotatePiece CCW model
+            GameState.rotatePiece CCW state
 
         Keys.Up ->
-            doHardDrop model
+            GameState.doHardDrop state
 
         Keys.Down ->
-            doSoftDrop model
+            GameState.doSoftDrop state
 
         _ ->
-            ( model, Cmd.none )
-
-
-movePiece : Pos -> Model -> ( Model, Cmd Msg )
-movePiece delta model =
-    let
-        newModel =
-            case model.currTetromino of
-                Nothing ->
-                    model
-
-                Just t ->
-                    case SRS.tryMove model.board t delta of
-                        Nothing ->
-                            model
-
-                        Just newT ->
-                            { model | currTetromino = Just newT } |> GameState.resetLockDelay
-    in
-    ( newModel, Cmd.none )
-
-
-rotatePiece : Rotation -> Model -> ( Model, Cmd Msg )
-rotatePiece rotation model =
-    let
-        newModel =
-            case model.currTetromino of
-                Nothing ->
-                    model
-
-                Just t ->
-                    case SRS.tryRotate model.board t rotation of
-                        Nothing ->
-                            model
-
-                        Just newT ->
-                            { model | currTetromino = Just newT } |> resetLockDelay
-    in
-    ( newModel, Cmd.none )
-
-
-doHardDrop : GameState -> ( GameState, Cmd Msg )
-doHardDrop model =
-    case model.currTetromino of
-        Nothing ->
-            ( model, Cmd.none )
-
-        Just tetromino ->
-            let
-                f t =
-                    case SRS.tryMove model.board t ( 0, -1 ) of
-                        Nothing ->
-                            spawnIfReady t True model
-
-                        Just newT ->
-                            f newT
-            in
-            f tetromino
-
-
-doSoftDrop : Model -> ( Model, Cmd Msg )
-doSoftDrop model =
-    ( { model
-        | softDropping = True
-        , gravityFrames =
-            if not model.softDropping then
-                0
-
-            else
-                model.gravityFrames
-      }
-    , Cmd.none
-    )
+            ( state, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
@@ -281,37 +247,37 @@ minoPosition board ( r, c ) =
     ( c |> toFloat |> (*) minoSize |> (+) offX, r |> toFloat |> (*) minoSize |> (+) offY |> flipY )
 
 
-renderGame : Model -> List Renderable
-renderGame model =
+renderGame : GameState -> List Renderable
+renderGame state =
     let
         currTetrominoRender =
-            case model.currTetromino of
+            case state.currTetromino of
                 Nothing ->
                     []
 
                 Just t ->
-                    renderTetromino model t
+                    renderTetromino state t
     in
-    clearScreen model :: renderBoard model ++ currTetrominoRender
+    clearScreen state :: renderBoard state ++ currTetrominoRender
 
 
-clearScreen : Model -> Renderable
-clearScreen model =
-    shapes [ fill Color.black ] [ rect ( 0, 0 ) (boardWidth model.board) (boardHeight model.board) ]
+clearScreen : GameState -> Renderable
+clearScreen state =
+    shapes [ fill Color.black ] [ rect ( 0, 0 ) (boardWidth state.board) (boardHeight state.board) ]
 
 
-renderTetromino : Model -> Tetromino -> List Renderable
-renderTetromino model tetromino =
-    List.map (renderMino model tetromino.piece) (minosPositions tetromino)
+renderTetromino : GameState -> Tetromino -> List Renderable
+renderTetromino state tetromino =
+    List.map (renderMino state tetromino.piece) (minosPositions tetromino)
 
 
-renderMino : Model -> Piece -> GridPoint -> Renderable
-renderMino model mino pos =
-    shapes [ fill (minoColor mino) ] [ rect (minoPosition model.board pos) minoSize minoSize ]
+renderMino : GameState -> Piece -> GridPoint -> Renderable
+renderMino state mino pos =
+    shapes [ fill (minoColor mino) ] [ rect (minoPosition state.board pos) minoSize minoSize ]
 
 
-renderBoard : Model -> List Renderable
-renderBoard ({ board } as model) =
+renderBoard : GameState -> List Renderable
+renderBoard ({ board } as state) =
     let
         ( r, c ) =
             boardRenderDims board
@@ -322,4 +288,4 @@ renderBoard ({ board } as model) =
     board.arr
         |> Array.toIndexedList
         |> List.filter (\( i, _ ) -> shouldRender (Board.fromArrIndex board i))
-        |> List.map (\( i, mino ) -> renderMino model mino (Board.fromArrIndex board i))
+        |> List.map (\( i, mino ) -> renderMino state mino (Board.fromArrIndex board i))

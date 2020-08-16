@@ -3,8 +3,9 @@ module GameState exposing (..)
 import Board exposing (Board)
 import PieceGen
 import Random
+import SRS
 import Tetromino exposing (Tetromino)
-import Types exposing (GridPoint, Msg(..), Piece)
+import Types exposing (GridPoint, Msg(..), Piece, Pos, Rotation)
 
 
 type alias GameState =
@@ -43,6 +44,78 @@ spawnTetromino : GameState -> Cmd Msg
 spawnTetromino state =
     Random.generate NextPiece
         (PieceGen.pieceGenerator state.pieceBag)
+
+
+movePiece : Pos -> GameState -> ( GameState, Cmd Msg )
+movePiece delta state =
+    let
+        newState =
+            case state.currTetromino of
+                Nothing ->
+                    state
+
+                Just t ->
+                    case SRS.tryMove state.board t delta of
+                        Nothing ->
+                            state
+
+                        Just newT ->
+                            { state | currTetromino = Just newT } |> resetLockDelay
+    in
+    ( newState, Cmd.none )
+
+
+rotatePiece : Rotation -> GameState -> ( GameState, Cmd Msg )
+rotatePiece rotation state =
+    let
+        newState =
+            case state.currTetromino of
+                Nothing ->
+                    state
+
+                Just t ->
+                    case SRS.tryRotate state.board t rotation of
+                        Nothing ->
+                            state
+
+                        Just newT ->
+                            { state | currTetromino = Just newT } |> resetLockDelay
+    in
+    ( newState, Cmd.none )
+
+
+doHardDrop : GameState -> ( GameState, Cmd Msg )
+doHardDrop model =
+    case model.currTetromino of
+        Nothing ->
+            ( model, Cmd.none )
+
+        Just tetromino ->
+            let
+                f t =
+                    case SRS.tryMove model.board t ( 0, -1 ) of
+                        Nothing ->
+                            spawnIfReady t True model
+
+                        Just newT ->
+                            f newT
+            in
+            f tetromino
+
+
+doSoftDrop : GameState -> ( GameState, Cmd Msg )
+doSoftDrop state =
+    ( { state
+        | softDropping = True
+        , gravityFrames =
+            if not state.softDropping then
+                0
+
+            else
+                state.gravityFrames
+      }
+    , Cmd.none
+    )
 
 
 resetLockDelay : GameState -> GameState

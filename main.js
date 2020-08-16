@@ -5262,6 +5262,9 @@ var $author$project$GameState$initialGameState = function (_v0) {
 		currTetromino: $elm$core$Maybe$Nothing,
 		gravityFrames: 0,
 		level: 0,
+		lockDelay: 0.5,
+		lockElapsed: 0,
+		locking: false,
 		pieceBag: $author$project$PieceGen$fullBag,
 		softDropping: false
 	};
@@ -6472,6 +6475,9 @@ var $author$project$Gravity$gravityTable = $elm$core$Array$fromList(
 		[60, 50, 40, 30, 20, 10, 8, 6, 4, 2, 1]));
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
 var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
+var $author$project$Gravity$softDropTable = $elm$core$Array$fromList(
+	_List_fromArray(
+		[3, 3, 2, 2, 1, 1, 1, 1, 1, 1, 1]));
 var $elm$core$Elm$JsArray$appendN = _JsArray_appendN;
 var $elm$core$Elm$JsArray$slice = _JsArray_slice;
 var $elm$core$Array$appendHelpBuilder = F2(
@@ -7135,9 +7141,31 @@ var $author$project$Board$placeTetromino = F2(
 				board,
 				{arr: newArr}));
 	});
-var $author$project$Gravity$softDropTable = $elm$core$Array$fromList(
-	_List_fromArray(
-		[3, 3, 2, 2, 1, 1, 1, 1, 1, 1, 1]));
+var $author$project$GameState$resetLockDelay = function (state) {
+	return _Utils_update(
+		state,
+		{lockElapsed: 0, locking: false});
+};
+var $author$project$GameState$spawnIfReady = F3(
+	function (tetromino, ignoreLockDelay, state) {
+		return ((_Utils_cmp(state.lockElapsed, state.lockDelay) > -1) || ignoreLockDelay) ? function (s) {
+			return _Utils_Tuple2(
+				s,
+				$author$project$GameState$spawnTetromino(s));
+		}(
+			$author$project$GameState$resetLockDelay(
+				_Utils_update(
+					state,
+					{
+						board: A2($author$project$Board$placeTetromino, tetromino, state.board),
+						currTetromino: $elm$core$Maybe$Nothing
+					}))) : _Utils_Tuple2(state, $elm$core$Platform$Cmd$none);
+	});
+var $author$project$GameState$startLockDelay = function (state) {
+	return _Utils_update(
+		state,
+		{locking: true});
+};
 var $elm$core$List$all = F2(
 	function (isOkay, list) {
 		return !A2(
@@ -7224,18 +7252,12 @@ var $author$project$Gravity$doGravity = function (state) {
 									st,
 									{currTetromino: t})));
 					} else {
-						return function (s) {
-							return _Utils_Tuple2(
-								s,
-								$author$project$GameState$spawnTetromino(s));
-						}(
+						return A3(
+							$author$project$GameState$spawnIfReady,
+							tetromino,
+							false,
 							updateGravityFrames(
-								_Utils_update(
-									st,
-									{
-										board: A2($author$project$Board$placeTetromino, tetromino, st.board),
-										currTetromino: $elm$core$Maybe$Nothing
-									})));
+								$author$project$GameState$startLockDelay(st)));
 					}
 				} else {
 					return _Utils_Tuple2(st, cmd);
@@ -7260,7 +7282,7 @@ var $author$project$Types$CW = {$: 'CW'};
 var $author$project$Main$doHardDrop = function (model) {
 	var _v0 = model.currTetromino;
 	if (_v0.$ === 'Nothing') {
-		return model;
+		return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 	} else {
 		var tetromino = _v0.a;
 		var f = function (t) {
@@ -7272,11 +7294,7 @@ var $author$project$Main$doHardDrop = function (model) {
 					t,
 					_Utils_Tuple2(0, -1));
 				if (_v1.$ === 'Nothing') {
-					return _Utils_update(
-						model,
-						{
-							currTetromino: $elm$core$Maybe$Just(t)
-						});
+					return A3($author$project$GameState$spawnIfReady, t, true, model);
 				} else {
 					var newT = _v1.a;
 					var $temp$t = newT;
@@ -7289,32 +7307,38 @@ var $author$project$Main$doHardDrop = function (model) {
 	}
 };
 var $author$project$Main$doSoftDrop = function (model) {
-	return _Utils_update(
-		model,
-		{
-			gravityFrames: (!model.softDropping) ? 0 : model.gravityFrames,
-			softDropping: true
-		});
+	return _Utils_Tuple2(
+		_Utils_update(
+			model,
+			{
+				gravityFrames: (!model.softDropping) ? 0 : model.gravityFrames,
+				softDropping: true
+			}),
+		$elm$core$Platform$Cmd$none);
 };
 var $author$project$Main$movePiece = F2(
 	function (delta, model) {
-		var _v0 = model.currTetromino;
-		if (_v0.$ === 'Nothing') {
-			return model;
-		} else {
-			var t = _v0.a;
-			var _v1 = A3($author$project$SRS$tryMove, model.board, t, delta);
-			if (_v1.$ === 'Nothing') {
+		var newModel = function () {
+			var _v0 = model.currTetromino;
+			if (_v0.$ === 'Nothing') {
 				return model;
 			} else {
-				var newT = _v1.a;
-				return _Utils_update(
-					model,
-					{
-						currTetromino: $elm$core$Maybe$Just(newT)
-					});
+				var t = _v0.a;
+				var _v1 = A3($author$project$SRS$tryMove, model.board, t, delta);
+				if (_v1.$ === 'Nothing') {
+					return model;
+				} else {
+					var newT = _v1.a;
+					return $author$project$GameState$resetLockDelay(
+						_Utils_update(
+							model,
+							{
+								currTetromino: $elm$core$Maybe$Just(newT)
+							}));
+				}
 			}
-		}
+		}();
+		return _Utils_Tuple2(newModel, $elm$core$Platform$Cmd$none);
 	});
 var $author$project$Types$Zero = {$: 'Zero'};
 var $author$project$Tetromino$getOffset = F2(
@@ -7455,51 +7479,52 @@ var $author$project$SRS$tryRotate = F3(
 	});
 var $author$project$Main$rotatePiece = F2(
 	function (rotation, model) {
-		var _v0 = model.currTetromino;
-		if (_v0.$ === 'Nothing') {
-			return model;
-		} else {
-			var t = _v0.a;
-			var _v1 = A3($author$project$SRS$tryRotate, model.board, t, rotation);
-			if (_v1.$ === 'Nothing') {
+		var newModel = function () {
+			var _v0 = model.currTetromino;
+			if (_v0.$ === 'Nothing') {
 				return model;
 			} else {
-				var newT = _v1.a;
-				return _Utils_update(
-					model,
-					{
-						currTetromino: $elm$core$Maybe$Just(newT)
-					});
+				var t = _v0.a;
+				var _v1 = A3($author$project$SRS$tryRotate, model.board, t, rotation);
+				if (_v1.$ === 'Nothing') {
+					return model;
+				} else {
+					var newT = _v1.a;
+					return $author$project$GameState$resetLockDelay(
+						_Utils_update(
+							model,
+							{
+								currTetromino: $elm$core$Maybe$Just(newT)
+							}));
+				}
 			}
-		}
+		}();
+		return _Utils_Tuple2(newModel, $elm$core$Platform$Cmd$none);
 	});
 var $author$project$Main$handleInput = F2(
 	function (key, model) {
-		var newModel = function () {
-			switch (key.$) {
-				case 'Left':
-					return A2(
-						$author$project$Main$movePiece,
-						_Utils_Tuple2(-1, 0),
-						model);
-				case 'Right':
-					return A2(
-						$author$project$Main$movePiece,
-						_Utils_Tuple2(1, 0),
-						model);
-				case 'Z':
-					return A2($author$project$Main$rotatePiece, $author$project$Types$CW, model);
-				case 'X':
-					return A2($author$project$Main$rotatePiece, $author$project$Types$CCW, model);
-				case 'Up':
-					return $author$project$Main$doHardDrop(model);
-				case 'Down':
-					return $author$project$Main$doSoftDrop(model);
-				default:
-					return model;
-			}
-		}();
-		return newModel;
+		switch (key.$) {
+			case 'Left':
+				return A2(
+					$author$project$Main$movePiece,
+					_Utils_Tuple2(-1, 0),
+					model);
+			case 'Right':
+				return A2(
+					$author$project$Main$movePiece,
+					_Utils_Tuple2(1, 0),
+					model);
+			case 'Z':
+				return A2($author$project$Main$rotatePiece, $author$project$Types$CW, model);
+			case 'X':
+				return A2($author$project$Main$rotatePiece, $author$project$Types$CCW, model);
+			case 'Up':
+				return $author$project$Main$doHardDrop(model);
+			case 'Down':
+				return $author$project$Main$doSoftDrop(model);
+			default:
+				return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+		}
 	});
 var $elm$core$List$isEmpty = function (xs) {
 	if (!xs.b) {
@@ -7705,19 +7730,27 @@ var $author$project$Tetromino$mkTetromino = function (piece) {
 		positions,
 		offsets);
 };
+var $author$project$GameState$tryIncrementLockDelay = F2(
+	function (dt, state) {
+		return state.locking ? _Utils_update(
+			state,
+			{lockElapsed: state.lockElapsed + dt}) : state;
+	});
 var $author$project$Main$update = F2(
 	function (msg, model) {
 		switch (msg.$) {
 			case 'Frame':
+				var dt = msg.a;
 				return $author$project$Gravity$doGravity(
-					_Utils_update(
-						model,
-						{gravityFrames: model.gravityFrames + 1}));
+					A2(
+						$author$project$GameState$tryIncrementLockDelay,
+						dt / 1000,
+						_Utils_update(
+							model,
+							{gravityFrames: model.gravityFrames + 1})));
 			case 'KeyDown':
 				var input = msg.a;
-				return _Utils_Tuple2(
-					A2($author$project$Main$handleInput, input.keyCode, model),
-					$elm$core$Platform$Cmd$none);
+				return A2($author$project$Main$handleInput, input.keyCode, model);
 			case 'KeyUp':
 				var input = msg.a;
 				var newModel = function () {

@@ -1,10 +1,11 @@
 module Gravity exposing (..)
 
 import Array exposing (Array)
-import Board exposing (Board)
-import GameState exposing (GameState, spawnTetromino)
+import Board
+import GameState exposing (GameState, resetLockDelay, spawnIfReady, spawnTetromino, startLockDelay)
 import Maybe exposing (withDefault)
 import SRS exposing (tryMove)
+import Tetromino exposing (Tetromino)
 import Types exposing (Msg)
 
 
@@ -78,11 +79,13 @@ doGravity state =
                                     |> doGravityHelper cmd
 
                             Nothing ->
-                                { st | board = Board.placeTetromino tetromino st.board, currTetromino = Nothing }
+                                st
+                                    |> startLockDelay
                                     |> updateGravityFrames
-                                    |> (\s -> ( s, GameState.spawnTetromino s ))
+                                    |> spawnIfReady tetromino False
 
                     else
                         ( st, cmd )
             in
             doGravityHelper Cmd.none state
+

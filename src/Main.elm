@@ -7,7 +7,7 @@ import Browser.Events exposing (onAnimationFrameDelta, onKeyDown, onKeyUp)
 import Canvas exposing (Point, Renderable, rect, shapes)
 import Canvas.Settings exposing (fill)
 import Color exposing (Color)
-import GameState exposing (GameState, boardDims, initialGameState)
+import GameState exposing (GameState, boardDims, initialGameState, resetLockDelay, spawnIfReady, spawnTetromino, startLockDelay, tryIncrementLockDelay)
 import Gravity exposing (doGravity)
 import Html exposing (Html, div)
 import Html.Attributes exposing (style)
@@ -62,12 +62,13 @@ view model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Frame _ ->
+        Frame dt ->
             { model | gravityFrames = model.gravityFrames + 1 }
+                |> tryIncrementLockDelay (dt / 1000)
                 |> doGravity
 
         KeyDown input ->
-            ( handleInput input.keyCode model, Cmd.none )
+            handleInput input.keyCode model
 
         KeyUp input ->
             let
@@ -102,77 +103,81 @@ update msg model =
             ( newModel, Cmd.none )
 
 
-handleInput : Key -> Model -> Model
+handleInput : Key -> Model -> ( Model, Cmd Msg )
 handleInput key model =
+    case key of
+        Keys.Left ->
+            movePiece ( -1, 0 ) model
+
+        Keys.Right ->
+            movePiece ( 1, 0 ) model
+
+        Keys.Z ->
+            rotatePiece CW model
+
+        Keys.X ->
+            rotatePiece CCW model
+
+        Keys.Up ->
+            doHardDrop model
+
+        Keys.Down ->
+            doSoftDrop model
+
+        _ ->
+            ( model, Cmd.none )
+
+
+movePiece : Pos -> Model -> ( Model, Cmd Msg )
+movePiece delta model =
     let
         newModel =
-            case key of
-                Keys.Left ->
-                    movePiece ( -1, 0 ) model
-
-                Keys.Right ->
-                    movePiece ( 1, 0 ) model
-
-                Keys.Z ->
-                    rotatePiece CW model
-
-                Keys.X ->
-                    rotatePiece CCW model
-
-                Keys.Up ->
-                    doHardDrop model
-
-                Keys.Down ->
-                    doSoftDrop model
-
-                _ ->
+            case model.currTetromino of
+                Nothing ->
                     model
+
+                Just t ->
+                    case SRS.tryMove model.board t delta of
+                        Nothing ->
+                            model
+
+                        Just newT ->
+                            { model | currTetromino = Just newT } |> GameState.resetLockDelay
     in
-    newModel
+    ( newModel, Cmd.none )
 
 
-movePiece : Pos -> Model -> Model
-movePiece delta model =
-    case model.currTetromino of
-        Nothing ->
-            model
-
-        Just t ->
-            case SRS.tryMove model.board t delta of
-                Nothing ->
-                    model
-
-                Just newT ->
-                    { model | currTetromino = Just newT }
-
-
-rotatePiece : Rotation -> Model -> Model
+rotatePiece : Rotation -> Model -> ( Model, Cmd Msg )
 rotatePiece rotation model =
-    case model.currTetromino of
-        Nothing ->
-            model
-
-        Just t ->
-            case SRS.tryRotate model.board t rotation of
+    let
+        newModel =
+            case model.currTetromino of
                 Nothing ->
                     model
 
-                Just newT ->
-                    { model | currTetromino = Just newT }
+                Just t ->
+                    case SRS.tryRotate model.board t rotation of
+                        Nothing ->
+                            model
+
+                        Just newT ->
+                            { model | currTetromino = Just newT } |> resetLockDelay
+    in
+    ( newModel, Cmd.none )
 
 
-doHardDrop : Model -> Model
+doHardDrop : GameState -> ( GameState, Cmd Msg )
 doHardDrop model =
     case model.currTetromino of
         Nothing ->
-            model
+            ( model, Cmd.none )
 
         Just tetromino ->
             let
                 f t =
                     case SRS.tryMove model.board t ( 0, -1 ) of
                         Nothing ->
-                            { model | currTetromino = Just t }
+                            spawnIfReady t True model
 
                         Just newT ->
                             f newT
@@ -180,9 +185,9 @@ doHardDrop model =
             f tetromino
 
 
-doSoftDrop : Model -> Model
+doSoftDrop : Model -> ( Model, Cmd Msg )
 doSoftDrop model =
-    { model
+    ( { model
         | softDropping = True
         , gravityFrames =
             if not model.softDropping then
@@ -190,7 +195,9 @@ doSoftDrop model =
 
             else
                 model.gravityFrames
-    }
+      }
+    , Cmd.none
+    )
 
 
 subscriptions : Model -> Sub Msg

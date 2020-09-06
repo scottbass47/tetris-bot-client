@@ -20,6 +20,8 @@ type Input
     = MoveLeft
     | MoveRight
     | HardDrop
+    | SoftDrop
+    | Rotate Rotation
 
 
 type Msg
@@ -27,6 +29,8 @@ type Msg
     | KeyDown KeyboardEvent
     | KeyUp KeyboardEvent
     | NextPiece Piece
+    | ServerMsg String
+    | SocketOpen String
 
 
 type Piece

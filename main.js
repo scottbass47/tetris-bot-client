@@ -5521,6 +5521,12 @@ var $author$project$Types$KeyDown = function (a) {
 var $author$project$Types$KeyUp = function (a) {
 	return {$: 'KeyUp', a: a};
 };
+var $author$project$Types$ServerMsg = function (a) {
+	return {$: 'ServerMsg', a: a};
+};
+var $author$project$Types$SocketOpen = function (a) {
+	return {$: 'SocketOpen', a: a};
+};
 var $elm$core$Platform$Sub$batch = _Platform_batch;
 var $Gizra$elm_keyboard_event$Keyboard$Event$KeyboardEvent = F7(
 	function (altKey, ctrlKey, key, keyCode, metaKey, repeat, shiftKey) {
@@ -5854,6 +5860,7 @@ var $Gizra$elm_keyboard_event$Keyboard$Event$decodeKeyboardEvent = A8(
 	A2($elm$json$Json$Decode$field, 'metaKey', $elm$json$Json$Decode$bool),
 	A2($elm$json$Json$Decode$field, 'repeat', $elm$json$Json$Decode$bool),
 	A2($elm$json$Json$Decode$field, 'shiftKey', $elm$json$Json$Decode$bool));
+var $author$project$Main$messageReceiver = _Platform_incomingPort('messageReceiver', $elm$json$Json$Decode$string);
 var $elm$browser$Browser$AnimationManager$Delta = function (a) {
 	return {$: 'Delta', a: a};
 };
@@ -6384,6 +6391,7 @@ var $elm$browser$Browser$Events$on = F3(
 	});
 var $elm$browser$Browser$Events$onKeyDown = A2($elm$browser$Browser$Events$on, $elm$browser$Browser$Events$Document, 'keydown');
 var $elm$browser$Browser$Events$onKeyUp = A2($elm$browser$Browser$Events$on, $elm$browser$Browser$Events$Document, 'keyup');
+var $author$project$Main$socketOpen = _Platform_incomingPort('socketOpen', $elm$json$Json$Decode$string);
 var $author$project$Main$subscriptions = function (_v0) {
 	return $elm$core$Platform$Sub$batch(
 		_List_fromArray(
@@ -6392,7 +6400,9 @@ var $author$project$Main$subscriptions = function (_v0) {
 				$elm$browser$Browser$Events$onKeyDown(
 				A2($elm$json$Json$Decode$map, $author$project$Types$KeyDown, $Gizra$elm_keyboard_event$Keyboard$Event$decodeKeyboardEvent)),
 				$elm$browser$Browser$Events$onKeyUp(
-				A2($elm$json$Json$Decode$map, $author$project$Types$KeyUp, $Gizra$elm_keyboard_event$Keyboard$Event$decodeKeyboardEvent))
+				A2($elm$json$Json$Decode$map, $author$project$Types$KeyUp, $Gizra$elm_keyboard_event$Keyboard$Event$decodeKeyboardEvent)),
+				$author$project$Main$messageReceiver($author$project$Types$ServerMsg),
+				$author$project$Main$socketOpen($author$project$Types$SocketOpen)
 			]));
 };
 var $elm$core$Basics$ge = _Utils_ge;
@@ -7731,6 +7741,85 @@ var $author$project$Tetromino$mkTetromino = function (piece) {
 		positions,
 		offsets);
 };
+var $elm$core$Array$foldl = F3(
+	function (func, baseCase, _v0) {
+		var tree = _v0.c;
+		var tail = _v0.d;
+		var helper = F2(
+			function (node, acc) {
+				if (node.$ === 'SubTree') {
+					var subTree = node.a;
+					return A3($elm$core$Elm$JsArray$foldl, helper, acc, subTree);
+				} else {
+					var values = node.a;
+					return A3($elm$core$Elm$JsArray$foldl, func, acc, values);
+				}
+			});
+		return A3(
+			$elm$core$Elm$JsArray$foldl,
+			func,
+			A3($elm$core$Elm$JsArray$foldl, helper, baseCase, tree),
+			tail);
+	});
+var $elm$json$Json$Encode$array = F2(
+	function (func, entries) {
+		return _Json_wrap(
+			A3(
+				$elm$core$Array$foldl,
+				_Json_addEntry(func),
+				_Json_emptyArray(_Utils_Tuple0),
+				entries));
+	});
+var $author$project$Board$boardDims = function (board) {
+	return _Utils_Tuple2(board.rows, board.cols);
+};
+var $elm$json$Json$Encode$int = _Json_wrap;
+var $elm$json$Json$Encode$object = function (pairs) {
+	return _Json_wrap(
+		A3(
+			$elm$core$List$foldl,
+			F2(
+				function (_v0, obj) {
+					var k = _v0.a;
+					var v = _v0.b;
+					return A3(_Json_addField, k, v, obj);
+				}),
+			_Json_emptyObject(_Utils_Tuple0),
+			pairs));
+};
+var $author$project$Main$encodeBoardSize = function (board) {
+	var _v0 = $author$project$Board$boardDims(board);
+	var rows = _v0.a;
+	var cols = _v0.b;
+	return $elm$json$Json$Encode$object(
+		_List_fromArray(
+			[
+				_Utils_Tuple2(
+				'boardSize',
+				A2(
+					$elm$json$Json$Encode$array,
+					$elm$json$Json$Encode$int,
+					$elm$core$Array$fromList(
+						_List_fromArray(
+							[rows, cols]))))
+			]));
+};
+var $elm$json$Json$Encode$string = _Json_wrap;
+var $author$project$Main$sendMessage = _Platform_outgoingPort('sendMessage', $elm$json$Json$Encode$string);
+var $author$project$Main$sendInitialData = function (board) {
+	var body = $elm$json$Json$Encode$object(
+		_List_fromArray(
+			[
+				_Utils_Tuple2(
+				'type',
+				$elm$json$Json$Encode$string('initial')),
+				_Utils_Tuple2(
+				'data',
+				$author$project$Main$encodeBoardSize(board))
+			]));
+	return $author$project$Main$sendMessage(
+		A2($elm$json$Json$Encode$encode, 0, body));
+};
 var $author$project$GameState$tryIncrementLockDelay = F2(
 	function (dt, state) {
 		return state.locking ? _Utils_update(
@@ -7754,7 +7843,7 @@ var $author$project$Main$updateGame = F2(
 				return A2($author$project$Main$handleInput, input.keyCode, state);
 			case 'KeyUp':
 				var input = msg.a;
-				var newModel = function () {
+				var newState = function () {
 					var _v1 = input.keyCode;
 					if (_v1.$ === 'Down') {
 						return _Utils_update(
@@ -7764,8 +7853,8 @@ var $author$project$Main$updateGame = F2(
 						return state;
 					}
 				}();
-				return _Utils_Tuple2(newModel, $elm$core$Platform$Cmd$none);
-			default:
+				return _Utils_Tuple2(newState, $elm$core$Platform$Cmd$none);
+			case 'NextPiece':
 				var piece = msg.a;
 				var newTetromino = A2(
 					$author$project$Tetromino$moveTetromino,
@@ -7781,13 +7870,23 @@ var $author$project$Main$updateGame = F2(
 							$elm$core$Basics$not,
 							$elm$core$Basics$eq(piece)),
 						state.pieceBag));
-				var newModel = _Utils_update(
+				var newState = _Utils_update(
 					state,
 					{
 						currTetromino: $elm$core$Maybe$Just(newTetromino),
 						pieceBag: newBag
 					});
-				return _Utils_Tuple2(newModel, $elm$core$Platform$Cmd$none);
+				return _Utils_Tuple2(newState, $elm$core$Platform$Cmd$none);
+			case 'SocketOpen':
+				return _Utils_Tuple2(
+					state,
+					$author$project$Main$sendInitialData(state.board));
+			default:
+				var str = msg.a;
+				return _Utils_Tuple2(
+					state,
+					$author$project$Main$sendMessage(
+						A2($elm$core$Debug$log, 'Sending: ', 'lmao ' + str)));
 		}
 	});
 var $author$project$Main$update = F2(
@@ -7820,9 +7919,6 @@ var $author$project$Main$update = F2(
 				{gameState: newGameState}),
 			cmd);
 	});
-var $author$project$Board$boardDims = function (board) {
-	return _Utils_Tuple2(board.rows, board.cols);
-};
 var $author$project$Main$boardRenderDims = function (board) {
 	var _v0 = $author$project$Board$boardDims(board);
 	var r = _v0.a;
@@ -8181,20 +8277,6 @@ var $elm$virtual_dom$VirtualDom$keyedNode = function (tag) {
 };
 var $elm$html$Html$Keyed$node = $elm$virtual_dom$VirtualDom$keyedNode;
 var $joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$empty = _List_Nil;
-var $elm$json$Json$Encode$object = function (pairs) {
-	return _Json_wrap(
-		A3(
-			$elm$core$List$foldl,
-			F2(
-				function (_v0, obj) {
-					var k = _v0.a;
-					var v = _v0.b;
-					return A3(_Json_addField, k, v, obj);
-				}),
-			_Json_emptyObject(_Utils_Tuple0),
-			pairs));
-};
-var $elm$json$Json$Encode$string = _Json_wrap;
 var $joakin$elm_canvas$Canvas$Internal$CustomElementJsonApi$fn = F2(
 	function (name, args) {
 		return $elm$json$Json$Encode$object(

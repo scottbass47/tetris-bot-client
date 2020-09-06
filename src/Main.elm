@@ -1,4 +1,4 @@
-module Main exposing (main)
+port module Main exposing (main)
 
 import Array
 import Board exposing (Board)
@@ -11,10 +11,13 @@ import GameState exposing (GameState, boardDims, initialGameState)
 import Gravity exposing (doGravity)
 import Html exposing (Html, div)
 import Html.Attributes exposing (style)
+import Http exposing (..)
 import Json.Decode as Json
+import Json.Encode as Encode
 import Keyboard.Event exposing (decodeKeyboardEvent)
 import Keyboard.Key as Keys exposing (Key)
 import PieceGen
+import Platform.Cmd exposing (Cmd)
 import Tetromino exposing (..)
 import Types exposing (GridPoint, Msg(..), Piece(..), Rotation(..))
 
@@ -25,6 +28,15 @@ type alias Model =
     , frameCounter : Int
     , fps : Int
     }
+
+
+port sendMessage : String -> Cmd msg
+
+
+port messageReceiver : (String -> msg) -> Sub msg
+
+
+port socketOpen : (String -> msg) -> Sub msg
 
 
 main : Program () Model Msg
@@ -110,7 +122,7 @@ updateGame msg state =
 
         KeyUp input ->
             let
-                newModel =
+                newState =
                     case input.keyCode of
                         Keys.Down ->
                             { state | softDropping = False }
@@ -118,7 +130,7 @@ updateGame msg state =
                         _ ->
                             state
             in
-            ( newModel, Cmd.none )
+            ( newState, Cmd.none )
 
         NextPiece piece ->
             let
@@ -135,10 +147,34 @@ updateGame msg state =
                                     b
                            )
 
-                newModel =
+                newState =
                     { state | currTetromino = Just newTetromino, pieceBag = newBag }
             in
-            ( newModel, Cmd.none )
+            ( newState, Cmd.none )
+
+        SocketOpen _ ->
+            ( state, sendInitialData state.board )
+
+        ServerMsg str ->
+            ( state, sendMessage (Debug.log "Sending: " ("lmao " ++ str)) )
+
+
+sendInitialData : Board -> Cmd msg
+sendInitialData board =
+    let
+        body =
+            Encode.object [ ( "type", Encode.string "initial" ), ( "data", encodeBoardSize board ) ]
+    in
+    sendMessage (Encode.encode 0 body)
+
+
+encodeBoardSize : Board -> Encode.Value
+encodeBoardSize board =
+    let
+        ( rows, cols ) =
+            Board.boardDims board
+    in
+    Encode.object [ ( "boardSize", Encode.array Encode.int (Array.fromList [ rows, cols ]) ) ]
 
 
 handleInput : Key -> GameState -> ( GameState, Cmd Msg )
@@ -172,6 +208,8 @@ subscriptions _ =
         [ onAnimationFrameDelta Frame
         , onKeyDown (Json.map KeyDown decodeKeyboardEvent)
         , onKeyUp (Json.map KeyUp decodeKeyboardEvent)
+        , messageReceiver ServerMsg
+        , socketOpen SocketOpen
         ]
 
 

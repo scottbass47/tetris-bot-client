@@ -27,6 +27,7 @@ type alias Model =
     , frameElapsed : Float
     , frameCounter : Int
     , fps : Int
+    , connected : Bool
     }
 
 
@@ -59,8 +60,10 @@ init () =
       , frameElapsed = 0
       , frameCounter = 0
       , fps = 0
+      , connected = False
       }
-    , GameState.spawnTetromino state
+    , Cmd.none
+      -- , GameState.spawnTetromino state
     )
 
 
@@ -138,7 +141,7 @@ updateGame msg state =
                     piece |> mkTetromino |> moveTetromino ( 4, 20 )
 
                 newBag =
-                    List.filter (not << (==) piece) state.pieceBag
+                    List.filter ((/=) piece) state.pieceBag
                         |> (\b ->
                                 if List.isEmpty b then
                                     PieceGen.fullBag
@@ -150,13 +153,13 @@ updateGame msg state =
                 newState =
                     { state | currTetromino = Just newTetromino, pieceBag = newBag }
             in
-            ( newState, Cmd.none )
+            ( newState, sendNewPiece state.board newTetromino )
 
         SocketOpen _ ->
-            ( state, sendInitialData state.board )
+            ( state, Cmd.batch [ sendInitialData state.board, GameState.spawnTetromino state ] )
 
         ServerMsg str ->
-            ( state, sendMessage (Debug.log "Sending: " ("lmao " ++ str)) )
+            ( state, Cmd.none )
 
 
 sendInitialData : Board -> Cmd msg
@@ -168,13 +171,66 @@ sendInitialData board =
     sendMessage (Encode.encode 0 body)
 
 
+sendNewPiece : Board -> Tetromino -> Cmd msg
+sendNewPiece board tetromino =
+    let
+        body =
+            Encode.object [ ( "type", Encode.string "spawn" ), ( "data", encodeNewPiece board tetromino ) ]
+    in
+    sendMessage (Encode.encode 0 body)
+
+
+encodeNewPiece : Board -> Tetromino -> Encode.Value
+encodeNewPiece board tetromino =
+    let
+        boardValue =
+            board
+                |> Board.toIndexedList
+                |> List.filter (\( _, p ) -> p /= Blank)
+                |> List.map Tuple.first
+                |> Encode.list encodeGridPoint
+    in
+    Encode.object [ ( "board", boardValue ), ( "pieceType", encodePieceType tetromino.piece ) ]
+
+
 encodeBoardSize : Board -> Encode.Value
 encodeBoardSize board =
-    let
-        ( rows, cols ) =
-            Board.boardDims board
-    in
-    Encode.object [ ( "boardSize", Encode.array Encode.int (Array.fromList [ rows, cols ]) ) ]
+    Encode.object [ ( "boardSize", encodeGridPoint (Board.boardDims board) ) ]
+
+
+encodeGridPoint : GridPoint -> Encode.Value
+encodeGridPoint ( r, c ) =
+    Encode.list Encode.int [ r, c ]
+
+
+encodePieceType : Piece -> Encode.Value
+encodePieceType piece =
+    Encode.string
+        (case piece of
+            I ->
+                "I"
+
+            J ->
+                "J"
+
+            L ->
+                "L"
+
+            O ->
+                "O"
+
+            S ->
+                "S"
+
+            Z ->
+                "Z"
+
+            T ->
+                "T"
+
+            _ ->
+                "Blank"
+        )
 
 
 handleInput : Key -> GameState -> ( GameState, Cmd Msg )

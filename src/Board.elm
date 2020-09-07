@@ -22,6 +22,13 @@ initBoard ( rows, cols ) =
     }
 
 
+toIndexedList : Board -> List ( GridPoint, Piece )
+toIndexedList board =
+    board.arr
+        |> Array.toIndexedList
+        |> List.map (\( i, p ) -> ( fromArrIndex board i, p ))
+
+
 minoAt : Board -> GridPoint -> Piece
 minoAt board pos =
     Array.get (toArrIndex board pos) board.arr |> withDefault Blank
